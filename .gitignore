@@ -1,0 +1,25 @@
+# Dependencies and compiled output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local environment configuration (keep sanitized examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Test output and caches
+coverage/
+.nyc_output/
+.cache/
+
+# Logs
+logs/
+*.log
+
+# Local editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
