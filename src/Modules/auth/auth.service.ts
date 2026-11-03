@@ -27,14 +27,14 @@ import {
 
 import { compareHash, generateHash } from "../../Utils/security/hash";
 import { generateOTP } from "../../Utils/generateOTP";
-import { emailEvent } from "../../Utils/events/email.events";
+import { monitorOTPFailure } from "../../Utils/security/otp-monitor";
+import { enqueueEmail } from "../../Utils/email/email.queue";
 
 import {
   UnauthorizedException,
   ForbiddenException,
 } from "../../Utils/response/error.response";
 
-const CONFIRM_EMAIL_OTP_TTL = 10 * 60 * 1000; // 10 minutes
 
 const OTP_EXPIRATION_MINUTES = 10;
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
@@ -45,6 +45,7 @@ const RESET_PASSWORD_OTP_TTL = 10 * 60 * 1000; // 10 minutes
 const RESET_PASSWORD_RESEND_COOLDOWN = 60 * 1000; // 60 seconds
 const RESET_PASSWORD_RESEND_WINDOW = 10 * 60 * 1000; // 10 minutes
 const RESET_PASSWORD_MAX_SENDS = 5;
+const RESET_PASSWORD_MAX_ATTEMPTS = 5;
 const FORGOT_PASSWORD_RESPONSE =
   "If an eligible account exists, a password reset code has been sent to its email address.";
 
@@ -139,7 +140,7 @@ class AuthService {
     };
   }
 
-  async confirmEmail(data: IConfirmEmailDTO) {
+  async confirmEmail(data: IConfirmEmailDTO, ip?: string) {
     const { email, otp } = data;
 
     const user = await userRepository.findByEmailWithConfirmEmailOTP(
@@ -171,11 +172,19 @@ class AuthService {
     );
 
     if (!isOTPValid) {
-      await userRepository.incrementConfirmEmailOTPAttempts(
+      const attempts = await userRepository.incrementConfirmEmailOTPAttempts(
         user._id,
         user.confirmEmailOTP,
         this.MAX_OTP_ATTEMPTS
       );
+
+      monitorOTPFailure({
+        flow: "confirm-email",
+        userId: user._id.toString(),
+        ip,
+        attempts,
+        maxAttempts: this.MAX_OTP_ATTEMPTS,
+      });
 
       throw invalidOTP();
     }
@@ -277,11 +286,11 @@ class AuthService {
     }
 
     // Trigger the verification email after the database update.
-    emailEvent.emit("confirmEmail", {
+    await enqueueEmail("confirmEmail", {
       to: user.email,
       username: user.username,
       otp,
-      expiresInMinutes: CONFIRM_EMAIL_OTP_TTL / (60 * 1000),
+      expiresAt: expiresAt.getTime(),
     });
 
     return genericResponse;
@@ -712,12 +721,12 @@ class AuthService {
       return { message: FORGOT_PASSWORD_RESPONSE };
     }
 
-    // Add a resetPassword listener to your existing email event system.
-    emailEvent.emit("resetPassword", {
+    // Persist delivery before acknowledging the request.
+    await enqueueEmail("resetPassword", {
       to: user.email,
       username: user.username,
       otp,
-      expiresInMinutes: RESET_PASSWORD_OTP_TTL / (60 * 1000),
+      expiresAt: now.getTime() + RESET_PASSWORD_OTP_TTL,
     });
 
     return { message: FORGOT_PASSWORD_RESPONSE };
@@ -727,32 +736,82 @@ class AuthService {
   // ============================================================================
   // Reset Password
   // ============================================================================
-  async resetPassword(data: IResetPasswordDTO) {
-    // const user = await userRepository.findUserForPasswordReset(data.email);
+  async resetPassword(data: IResetPasswordDTO, ip?: string) {
     const user =
       await userRepository.findUserForPasswordResetWithPassword(data.email);
 
-    if (!user || !user.resetPasswordOTP || !user.resetPasswordOTPExpiresAt) {
+    if (
+      !user ||
+      !user.resetPasswordOTP ||
+      !user.resetPasswordOTPExpiresAt
+    ) {
       throw new UnauthorizedException("Invalid or expired OTP");
     }
 
     const now = new Date();
 
+    // 1. Check OTP expiration.
     if (user.resetPasswordOTPExpiresAt.getTime() <= now.getTime()) {
       throw new UnauthorizedException("Invalid or expired OTP");
     }
 
-    // Verify the submitted OTP against the stored hash.
+    // 2. Check whether the maximum number of attempts has been reached.
+    if (
+      (user.resetPasswordOTPAttempts ?? 0) >=
+      RESET_PASSWORD_MAX_ATTEMPTS
+    ) {
+      throw new UnauthorizedException(
+        "Invalid or expired OTP. Please request a new code."
+      );
+    }
+
+    // 3. Verify the submitted OTP.
     const isOTPValid = await compareHash(
       data.otp,
       user.resetPasswordOTP
     );
 
     if (!isOTPValid) {
-      throw new UnauthorizedException("Invalid or expired OTP");
+      const attempts =
+        await userRepository.incrementResetPasswordOTPAttempts({
+          userId: user._id,
+          otpHash: user.resetPasswordOTP,
+          now,
+          maxAttempts: RESET_PASSWORD_MAX_ATTEMPTS,
+        });
+
+      // The OTP may have expired, been replaced, or reached its limit
+      // while this request was being processed.
+      if (attempts === null) {
+        throw new UnauthorizedException("Invalid or expired OTP");
+      }
+
+      monitorOTPFailure({
+        flow: "reset-password",
+        userId: user._id.toString(),
+        ip,
+        attempts,
+        maxAttempts: RESET_PASSWORD_MAX_ATTEMPTS,
+      });
+
+      if (attempts >= RESET_PASSWORD_MAX_ATTEMPTS) {
+        await userRepository.invalidateResetPasswordOTP({
+          userId: user._id,
+          otpHash: user.resetPasswordOTP,
+          maxAttempts: RESET_PASSWORD_MAX_ATTEMPTS,
+        });
+
+        throw new UnauthorizedException(
+          "Maximum OTP attempts reached. Please request a new code."
+        );
+      }
+
+      throw new UnauthorizedException(
+        `Invalid OTP. ${RESET_PASSWORD_MAX_ATTEMPTS - attempts} attempts remaining.`
+      );
     }
 
-    // Prevent resetting to the same password.
+    // 4. Prevent reusing the current password.
     const isSamePassword = await compareHash(
       data.newPassword,
       user.password
@@ -764,15 +823,17 @@ class AuthService {
       );
     }
 
+    // 5. Hash the new password.
     const newPasswordHash = await generateHash(data.newPassword);
 
-    // Atomically update the password, clear the OTP, and invalidate sessions.
-    const isReset = await userRepository.resetPasswordAndInvalidateSessions({
-      userId: user._id,
-      otpHash: user.resetPasswordOTP,
-      newPasswordHash,
-      now,
-    });
+    // 6. Atomically reset the password, consume OTP, and invalidate sessions.
+    const isReset =
+      await userRepository.resetPasswordAndInvalidateSessions({
+        userId: user._id,
+        otpHash: user.resetPasswordOTP,
+        newPasswordHash,
+        now,
+      });
 
     if (!isReset) {
       throw new UnauthorizedException(

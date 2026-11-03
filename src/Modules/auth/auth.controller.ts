@@ -60,7 +60,7 @@ class AuthController {
   ): Promise<void> => {
     const data = req.body as IConfirmEmailDTO;
 
-    const result = await authService.confirmEmail(data);
+    const result = await authService.confirmEmail(data, req.ip);
 
     res.status(200).json({
       success: true,
@@ -232,7 +232,8 @@ class AuthController {
   // ============================================================================
   resetPassword: RequestHandler = async (req, res): Promise<void> => {
     const result = await authService.resetPassword(
-      req.body as IResetPasswordDTO
+      req.body as IResetPasswordDTO,
+      req.ip
     );
 
     res.status(200).json({

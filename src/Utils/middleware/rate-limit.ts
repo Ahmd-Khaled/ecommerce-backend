@@ -20,6 +20,8 @@ export const authLimiter = createLimiter(30);
 export const registerLimiter = createLimiter(5);
 export const loginLimiter = createLimiter(5);
 export const otpLimiter = createLimiter(5, 10 * MINUTE);
+export const forgotPasswordLimiter = createLimiter(5, 10 * MINUTE);
+export const resetPasswordLimiter = createLimiter(5, 10 * MINUTE);
 
 // Catalog browsing typically generates more requests than account operations.
 export const productsLimiter = createLimiter(300);

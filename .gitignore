@@ -14,6 +14,7 @@ dist/
 coverage/
 .nyc_output/
 .cache/
+.npm-cache/
 
 # Logs
 logs/

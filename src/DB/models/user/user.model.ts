@@ -19,7 +19,7 @@ import {
 } from "./user.interface";
 
 import { generateHash } from "../../../Utils/security/hash";
-import { emailEvent } from "../../../Utils/events/email.events";
+import { enqueueEmail } from "../../../Utils/email/email.queue";
 
 // ============================================================================
 // 1. Helper Functions
@@ -287,6 +287,13 @@ export const UserSchema = new Schema<
       select: false,
     },
 
+    resetPasswordOTPAttempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+      select: false,
+    },
+
     // ------------------------------------------------------------------------
     // Account Security
     // ------------------------------------------------------------------------
@@ -487,10 +494,11 @@ UserSchema.post("save", async function (doc: HUserDocument) {
     const plainOTP = locals.confirmEmailPlainOTP;
 
     if (wasNew && plainOTP) {
-      await emailEvent.emit("confirmEmail", {
+      await enqueueEmail("confirmEmail", {
         to: doc.email,
         username: doc.username,
         otp: plainOTP,
+        expiresAt: doc.confirmEmailOTPExpiresAt!.getTime(),
       });
     }
   } finally {

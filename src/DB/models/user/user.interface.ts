@@ -73,6 +73,7 @@ export interface IUser {
   resetPasswordOTPSentAt?: Date;
   resetPasswordOTPWindowStartedAt?: Date;
   resetPasswordOTPResendCount?: number;
+  resetPasswordOTPAttempts?: number;
 
   // Account security
   changeCredentialsTime?: Date;

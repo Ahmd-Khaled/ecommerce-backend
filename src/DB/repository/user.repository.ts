@@ -113,7 +113,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           },
         },
         {
-          new: true,
+          returnDocument: "after",
         }
       )
       .select("+confirmEmailOTPAttempts")
@@ -173,7 +173,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
         },
       },
       {
-        new: true,
+        returnDocument: "after",
       }
     ).exec();
 
@@ -253,7 +253,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
         },
       },
       {
-        new: true,
+        returnDocument: "after",
       }
     ).exec();
 
@@ -277,7 +277,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           },
         },
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       )
@@ -375,6 +375,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
             resetPasswordOTPSentAt: sentAt,
             resetPasswordOTPWindowStartedAt: windowStartedAt,
             resetPasswordOTPResendCount: resendCount,
+            resetPasswordOTPAttempts: 0,
           },
           $inc: {
             __v: 1,
@@ -387,6 +388,74 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
       .exec();
 
     return result.modifiedCount === 1;
+  }
+
+  async incrementResetPasswordOTPAttempts(params: {
+    userId: Types.ObjectId;
+    otpHash: string;
+    now: Date;
+    maxAttempts: number;
+  }): Promise<number | null> {
+    const { userId, otpHash, now, maxAttempts } = params;
+
+    const updatedUser = await this.model
+      .findOneAndUpdate(
+        {
+          _id: userId,
+          resetPasswordOTP: otpHash,
+          resetPasswordOTPExpiresAt: { $gt: now },
+          resetPasswordOTPAttempts: { $lt: maxAttempts },
+        },
+        {
+          $inc: {
+            resetPasswordOTPAttempts: 1,
+            __v: 1,
+          },
+        },
+        {
+          returnDocument: "after",
+          projection: {
+            resetPasswordOTPAttempts: 1,
+          },
+        })
+      .exec();
+
+    if (!updatedUser) {
+      return null;
+    }
+
+    return updatedUser.resetPasswordOTPAttempts ?? 0;
+  }
+
+  async invalidateResetPasswordOTP(params: {
+    userId: Types.ObjectId;
+    otpHash: string;
+    maxAttempts: number;
+  }): Promise<void> {
+    const { userId, otpHash, maxAttempts } = params;
+
+    await this.model
+      .updateOne(
+        {
+          _id: userId,
+          resetPasswordOTP: otpHash,
+          resetPasswordOTPAttempts: { $gte: maxAttempts },
+        },
+        {
+          $unset: {
+            resetPasswordOTP: 1,
+            resetPasswordOTPExpiresAt: 1,
+            resetPasswordOTPSentAt: 1,
+            resetPasswordOTPWindowStartedAt: 1,
+            resetPasswordOTPResendCount: 1,
+            resetPasswordOTPAttempts: 1,
+          },
+          $inc: {
+            __v: 1,
+          },
+        }
+      )
+      .exec();
   }
 
   async resetPasswordAndInvalidateSessions(params: {
@@ -403,6 +472,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           _id: userId,
           resetPasswordOTP: otpHash,
           resetPasswordOTPExpiresAt: { $gt: now },
+          resetPasswordOTPAttempts: { $lt: 5 },
         },
         {
           $set: {
@@ -414,6 +484,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
             resetPasswordOTPSentAt: 1,
             resetPasswordOTPWindowStartedAt: 1,
             resetPasswordOTPResendCount: 1,
+            resetPasswordOTPAttempts: 1,
           },
           $inc: {
             tokenVersion: 1,
@@ -442,6 +513,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           "+password",
           "+resetPasswordOTP",
           "+resetPasswordOTPExpiresAt",
+          "+resetPasswordOTPAttempts",
         ].join(" ")
       )
       .exec() as Promise<HUserDocument | null>;

@@ -20,6 +20,8 @@ import {
   loginLimiter,
   otpLimiter,
   resendEmailOTPLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
 } from "../../Utils/middleware/rate-limit";
 import { authentication } from "../../Middlewares/authentication.middlewares";
 import { developmentOnly } from "../../Middlewares/development.middlewares";
@@ -116,6 +118,7 @@ router.patch(
 // Forgot Password
 router.patch(
   "/forgot-password",
+  forgotPasswordLimiter,
   validations(forgotPasswordSchema),
   authController.forgotPassword
 );
@@ -123,6 +126,7 @@ router.patch(
 // Reset Password
 router.patch(
   "/reset-password",
+  resetPasswordLimiter,
   validations(resetPasswordSchema),
   authController.resetPassword
 );

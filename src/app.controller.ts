@@ -1,4 +1,5 @@
 import express from "express";
+import { startEmailQueue } from "./Utils/email/email.queue";
 import type { Express, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -11,11 +12,11 @@ import { Server } from "node:http";
 import { authRouter } from "./Modules/auth/auth.routes";
 
 import cartRouter from "./Modules/cart/cart.controller";
-import categoriesRouter from "./Modules/categories/categories.controller";
-import ordersRouter from "./Modules/orders/orders.controller";
-import paymentsRouter from "./Modules/payments/payments.controller";
-import productsRouter from "./Modules/products/products.controller";
-import usersRouter from "./Modules/users/users.controller";
+import { categoryRouter } from "./Modules/category/category.routes";
+import ordersRouter from "./Modules/order/order.controller";
+import paymentsRouter from "./Modules/payment/payment.controller";
+import productsRouter from "./Modules/product/product.controller";
+import usersRouter from "./Modules/user/user.controller";
 import {
   authLimiter,
   cartLimiter,
@@ -52,6 +53,7 @@ export const bootstrap = async (): Promise<Server> => {
   // ==========================================
 
   await connectDB();
+  await startEmailQueue();
 
   // ==========================================
   // Routes
@@ -86,7 +88,7 @@ export const bootstrap = async (): Promise<Server> => {
     "/api/v1/categories",
     categoriesLimiter,
     express.json({ limit: "20kb" }),
-    categoriesRouter,
+    categoryRouter,
   );
 
   // Cart: item references, quantities, and selected options.
