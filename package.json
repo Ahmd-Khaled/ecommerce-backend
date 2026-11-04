@@ -7,7 +7,8 @@
     "build": "tsc",
     "predev": "npm run build",
     "dev": "concurrently \"tsc -watch\" \"node --watch dist/index.js\"",
-    "test:email": "npm run build && node --test tests/email.queue.test.cjs"
+    "test:email": "npm run build && node --test tests/email.queue.test.cjs",
+    "test:category": "npm run build && node --test tests/category.*.test.cjs"
   },
   "keywords": [],
   "author": "",

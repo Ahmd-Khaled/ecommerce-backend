@@ -136,6 +136,75 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
 
     return Boolean(child);
   }
+
+  // -------------------------------------------------
+
+  /**
+   * Find an active category by ID.
+   */
+  async findActiveCategoryById(
+    id: Types.ObjectId,
+  ): Promise<CategoryDocument | null> {
+    return this.model
+      .findOne({
+        _id: id,
+        isActive: true,
+      })
+      .exec();
+  }
+
+  /**
+   * Find an active category by slug.
+   */
+  async findActiveCategoryBySlug(
+    slug: string,
+  ): Promise<CategoryDocument | null> {
+    return this.model
+      .findOne({
+        slug,
+        isActive: true,
+      })
+      .exec();
+  }
+
+  /**
+   * Find active root categories.
+   */
+  async findActiveRootCategories(): Promise<CategoryDocument[]> {
+    return this.model
+      .find({
+        isActive: true,
+        parent: { $exists: false },
+      })
+      .sort({ sortOrder: 1, name: 1 })
+      .exec();
+  }
+
+  /**
+   * Find active direct children of a category.
+   */
+  async findActiveChildCategories(
+    parentId: Types.ObjectId,
+  ): Promise<CategoryDocument[]> {
+    return this.model
+      .find({
+        parent: parentId,
+        isActive: true,
+      })
+      .sort({ sortOrder: 1, name: 1 })
+      .exec();
+  }
+
+  /**
+   * Retrieve all active categories.
+   */
+  async findAllActiveCategories(): Promise<CategoryDocument[]> {
+    return this.model
+      .find({ isActive: true })
+      .sort({ sortOrder: 1, name: 1 })
+      .exec();
+  }
+
 }
 
 export const categoryRepository = new CategoryRepository();

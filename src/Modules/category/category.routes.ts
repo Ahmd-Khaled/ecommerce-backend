@@ -45,6 +45,24 @@ router.get(
   categoryController.getRootCategories,
 );
 
+
+/**
+ * GET /api/v1/categories/tree
+ * Public.
+ */
+router.get(
+  "/tree",
+  categoryController.getCategoryTree,
+);
+
+// GET /api/v1/categories/slug/:slug
+// Keep the literal /slug prefix before the parameterized category routes.
+router.get(
+  "/slug/:slug",
+  validations(categorySlugSchema),
+  categoryController.getCategoryBySlug,
+);
+
 // GET /api/v1/categories/:categoryId/children
 router.get(
   "/:categoryId/children",
@@ -52,11 +70,11 @@ router.get(
   categoryController.getChildCategories,
 );
 
-// GET /api/v1/categories/slug/:slug
+// GET /api/v1/categories/:categoryId/tree
 router.get(
-  "/slug/:slug",
-  validations(categorySlugSchema),
-  categoryController.getCategoryBySlug,
+  "/:categoryId/tree",
+  validations(categoryIdSchema),
+  categoryController.getCategoryTreeById,
 );
 
 /**
@@ -101,5 +119,7 @@ router.delete(
   validations(categoryIdSchema),
   categoryController.deleteCategory,
 );
+
+
 
 export const categoryRouter = router;

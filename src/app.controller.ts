@@ -15,7 +15,7 @@ import cartRouter from "./Modules/cart/cart.controller";
 import { categoryRouter } from "./Modules/category/category.routes";
 import ordersRouter from "./Modules/order/order.controller";
 import paymentsRouter from "./Modules/payment/payment.controller";
-import productsRouter from "./Modules/product/product.controller";
+import { productRouter } from "./Modules/product/product.routes";
 import usersRouter from "./Modules/user/user.controller";
 import {
   authLimiter,
@@ -72,7 +72,7 @@ export const bootstrap = async (): Promise<Server> => {
     "/api/v1/products",
     productsLimiter,
     express.json({ limit: "1mb" }),
-    productsRouter,
+    productRouter,
   );
 
   // Users: profile fields and saved addresses.

@@ -13,6 +13,16 @@ import type {
 } from "./category.dto";
 
 class CategoryController {
+  /** Get a public category and its complete visible subtree. */
+  getCategoryTreeById: RequestHandler<CategoryIdDTO> = async (req, res): Promise<void> => {
+    const category = await categoryService.getCategoryTreeById(req.params.categoryId);
+    res.status(200).json({
+      success: true,
+      message: "Category tree retrieved successfully",
+      data: { category },
+    });
+  };
+
   /**
    * Create a category.
    * Admin only.
@@ -94,7 +104,7 @@ class CategoryController {
     const { categoryId } = req.params;
 
     const category =
-      await categoryService.getCategoryById(categoryId);
+      await categoryService.getCategoryById(categoryId, true);
 
     res.status(200).json({
       success: true,
@@ -171,6 +181,23 @@ class CategoryController {
       message: "Category deleted successfully",
     });
   };
+
+
+  /**
+   * Get the active category tree.
+   * Public.
+   */
+  getCategoryTree: RequestHandler = async (req, res): Promise<void> => {
+    const categories =
+      await categoryService.getCategoryTree();
+
+    res.status(200).json({
+      success: true,
+      message: "Category tree retrieved successfully",
+      data: { categories },
+    });
+  };
+
 }
 
 export const categoryController = new CategoryController();
