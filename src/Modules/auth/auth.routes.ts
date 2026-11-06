@@ -12,6 +12,7 @@ import {
   changePasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  refreshTokenSchema,
 } from "./auth.validation";
 
 import { validations } from "../../Middlewares/validation.middlewares";
@@ -89,6 +90,7 @@ router.post(
 // Refresh Token
 router.post(
   "/refresh-token",
+  validations(refreshTokenSchema),
   authController.refreshToken
 );
 

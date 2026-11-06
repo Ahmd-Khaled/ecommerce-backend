@@ -2,8 +2,10 @@ import express from "express";
 import { startEmailQueue } from "./Utils/email/email.queue";
 import type { Express, Request, Response } from "express";
 import cors from "cors";
+import { corsOptions } from "./Utils/middleware/cors";
 import helmet from "helmet";
 import path from "node:path";
+import cookieParser from "cookie-parser";
 import { config } from "dotenv";
 import { globalErrorHandler } from "./Utils/response/error.response";
 import connectDB from "./DB/connection";
@@ -11,12 +13,16 @@ import { Server } from "node:http";
 
 import { authRouter } from "./Modules/auth/auth.routes";
 
-import cartRouter from "./Modules/cart/cart.controller";
 import { categoryRouter } from "./Modules/category/category.routes";
-import ordersRouter from "./Modules/order/order.controller";
+import { orderRouter as ordersRouter } from "./Modules/order/order.routes";
 import paymentsRouter from "./Modules/payment/payment.controller";
 import { productRouter } from "./Modules/product/product.routes";
 import usersRouter from "./Modules/user/user.controller";
+import { cartRouter } from "./Modules/cart/cart.routes";
+import { addressRouter } from "./Modules/address/address.routes";
+import { CartModel } from "./DB/models/cart/cart.model";
+import { OrderModel } from "./DB/models/order/order.model";
+import { cartLimits } from "./Modules/cart/cart.config";
 import {
   authLimiter,
   cartLimiter,
@@ -44,15 +50,19 @@ export const bootstrap = async (): Promise<Server> => {
   // Global Middleware
   // ==========================================
 
-  app.use(cors());
+  app.use(cors(corsOptions()));
   app.use(helmet());
-
+  app.use(cookieParser());
 
   // ==========================================
   // Database Connection
   // ==========================================
 
+  cartLimits();
   await connectDB();
+  // Cart creation safety requires the unique index before accepting traffic.
+  await CartModel.createIndexes();
+  await OrderModel.init();
   await startEmailQueue();
 
   // ==========================================
@@ -73,6 +83,13 @@ export const bootstrap = async (): Promise<Server> => {
     productsLimiter,
     express.json({ limit: "1mb" }),
     productRouter,
+  );
+
+  app.use(
+    "/api/v1/addresses",
+    usersLimiter,
+    express.json({ limit: "10kb" }),
+    addressRouter,
   );
 
   // Users: profile fields and saved addresses.

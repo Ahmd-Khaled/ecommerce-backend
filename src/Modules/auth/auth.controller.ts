@@ -2,6 +2,8 @@
 import type { RequestHandler } from "express";
 import type { IChangePasswordDTO, IConfirmEmailDTO, IForgotPasswordDTO, ILoginDTO, IResendConfirmEmailDTO, IResetPasswordDTO, ISignupDTO, IUpdateProfileDTO } from "./auth.dto";
 import { authService } from "./auth.service";
+import { clearRefreshTokenCookie, setRefreshTokenCookie } from "./auth.cookie";
+import type { IRefreshTokenDTO } from "./auth.dto";
 import { createRevokeToken } from "../../Utils/security/token";
 import { BadRequestException, UnauthorizedException } from "../../Utils/response/error.response";
 
@@ -100,9 +102,14 @@ class AuthController {
 
     const result = await authService.login(data);
 
+    const { refreshToken, ...tokens } = result.tokens;
+    setRefreshTokenCookie(res, refreshToken, tokens.tokenType);
+    res.setHeader("Cache-Control", "no-store");
+
     res.status(200).json({
       success: true,
       ...result,
+      tokens,
     });
   };
 
@@ -112,10 +119,11 @@ class AuthController {
 
   logoutCurrentDevice: RequestHandler = async (req, res): Promise<void> => {
     const result = await authService.logoutCurrentDevice({
-      authorization: req.headers.authorization!,
       accessDecoded: req.decoded!,
-      refreshToken: req.body.refreshToken,
+      refreshToken: (req.cookies as IRefreshTokenDTO).refreshToken,
     });
+
+    clearRefreshTokenCookie(res);
 
     res.status(200).json({
       success: true,
@@ -132,6 +140,8 @@ class AuthController {
       req.user!._id
     );
 
+    clearRefreshTokenCookie(res);
+
     res.status(200).json({
       success: true,
       ...result,
@@ -147,12 +157,17 @@ class AuthController {
     res
   ): Promise<void> => {
     const result = await authService.refreshToken(
-      req.headers.authorization ?? ""
+      (req.cookies as IRefreshTokenDTO).refreshToken
     );
+
+    const { refreshToken, ...tokens } = result.tokens;
+    setRefreshTokenCookie(res, refreshToken, tokens.tokenType);
+    res.setHeader("Cache-Control", "no-store");
 
     res.status(200).json({
       success: true,
       ...result,
+      tokens,
     });
   };
 
@@ -205,6 +220,8 @@ class AuthController {
       req.body as IChangePasswordDTO
     );
 
+    clearRefreshTokenCookie(res);
+
     res.status(200).json({
       success: true,
       ...result,
@@ -235,6 +252,8 @@ class AuthController {
       req.body as IResetPasswordDTO,
       req.ip
     );
+
+    clearRefreshTokenCookie(res);
 
     res.status(200).json({
       success: true,

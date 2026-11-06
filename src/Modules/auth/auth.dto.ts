@@ -7,6 +7,7 @@ import {
   forgotPasswordSchema,
   loginSchema,
   logoutCurrentDeviceSchema,
+  refreshTokenSchema,
   resendConfirmEmailSchema,
   resetPasswordSchema,
   signupSchema,
@@ -51,8 +52,9 @@ export type IResendConfirmEmailDTO = z.infer<
 // ============================================================================
 
 export type ILogoutCurrentDeviceDTO = z.infer<
-  typeof logoutCurrentDeviceSchema.body
+  typeof logoutCurrentDeviceSchema.cookies
 >;
+export type IRefreshTokenDTO = z.infer<typeof refreshTokenSchema.cookies>;
 
 
 // ============================================================================

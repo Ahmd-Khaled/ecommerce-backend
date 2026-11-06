@@ -356,18 +356,13 @@ class AuthService {
   }
 
   async logoutCurrentDevice({
-    authorization,
     accessDecoded,
     refreshToken,
   }: {
-    authorization: string;
     accessDecoded: JwtPayload;
     refreshToken: string;
   }) {
-    // Extract the authentication scheme from the access token header.
-    const [signatureLevel] = authorization.trim().split(/\s+/);
-
-    if (!signatureLevel || !refreshToken) {
+    if (!refreshToken) {
       throw new UnauthorizedException("Invalid logout credentials");
     }
 
@@ -376,7 +371,7 @@ class AuthService {
       user: refreshUser,
       decoded: refreshDecoded,
     } = await decodedToken({
-      authorization: `${signatureLevel} ${refreshToken}`,
+      authorization: refreshToken,
       tokenType: TokenTypeEnum.REFRESH,
     });
 

@@ -140,12 +140,3 @@ export abstract class DatabaseRepository<
     return await this.model.findOneAndDelete(filter);
   }
 }
-
-
-
-
-
-
-
-
-

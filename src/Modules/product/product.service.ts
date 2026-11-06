@@ -222,14 +222,12 @@ class ProductService {
       );
     }
 
-    const { compareAtPrice, category, ...rest } = data;
-
-    const update: Record<string, unknown> = {
-      ...rest,
-    };
+    const { compareAtPrice, category } = data;
+    const fields = this.getProductFields(data);
+    const update: Record<string, unknown> = { $set: fields };
 
     if (category !== undefined) {
-      update.category = new Types.ObjectId(category);
+      fields.category = new Types.ObjectId(category);
     }
 
     if (compareAtPrice === null) {
@@ -237,7 +235,8 @@ class ProductService {
         compareAtPrice: 1,
       };
     } else if (compareAtPrice !== undefined) {
-      update.compareAtPrice = compareAtPrice;
+      // The query validator needs the effective price in the same update.
+      fields.price = nextPrice;
     }
 
     try {

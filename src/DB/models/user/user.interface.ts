@@ -1,6 +1,7 @@
 import {
   HydratedDocument,
   Model,
+  Types,
 } from "mongoose";
 
 // ============================================================================
@@ -23,6 +24,7 @@ export enum RoleEnum {
 // ============================================================================
 
 export interface IUserAddress {
+  _id?: Types.ObjectId;
   label: string;
   fullName: string;
   phone: string;

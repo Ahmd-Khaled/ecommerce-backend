@@ -80,11 +80,14 @@ export const resendConfirmEmailSchema = {
 // ============================================================================
 // 5. Logout Current Device Schema
 // ============================================================================
-export const logoutCurrentDeviceSchema = {
-  body: z.strictObject({
-    refreshToken: z.string().trim().min(1).max(8192),
+export const refreshTokenSchema = {
+  cookies: z.object({
+    refreshToken: z.string().min(1).max(8192)
+      .regex(/^(user|admin) [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, "Invalid refresh cookie"),
   }),
+  body: z.strictObject({}).default({}),
 };
+export const logoutCurrentDeviceSchema = refreshTokenSchema;
 
 // ============================================================================
 // Update Profile Validation

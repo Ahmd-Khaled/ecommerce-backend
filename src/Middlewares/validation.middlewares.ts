@@ -3,7 +3,7 @@ import { BadRequestException } from "../Utils/response/error.response";
 import type { ZodType } from "zod";
 
 
-type KeyReqType = "body" | "params" | "query" | "headers";
+type KeyReqType = "body" | "params" | "query" | "headers" | "cookies";
 type SchemaType = Partial<Record<KeyReqType, ZodType>>;
 type ValidationErrorType = Array<{
   key: KeyReqType;

@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node --test tests/*.test.cjs",
+    "test:cart": "npm run build && node --test tests/cart*.test.cjs tests/order.checkout.test.cjs",
     "predev": "npm run build",
     "dev": "concurrently \"tsc -watch\" \"node --watch dist/index.js\"",
     "test:email": "npm run build && node --test tests/email.queue.test.cjs",
@@ -18,6 +20,7 @@
     "bcrypt": "^6.0.0",
     "bullmq": "^6.5.4",
     "concurrently": "^10.0.6",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
