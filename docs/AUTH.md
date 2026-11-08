@@ -110,3 +110,7 @@ The service checks expiry, allows at most five guesses, compares the OTP hash, p
 `/test-revoke` exists only when `MODE=DEV` and `NODE_ENV` is not `production`; otherwise it returns 404. It revokes the presented authenticated token directly in the controller.
 
 Email delivery is asynchronous after successful enqueue. MongoDB updates and Redis enqueue are not one transaction: a 503 can occur after a user/code is already saved. See [email operations](EMAIL_QUEUE.md). Auth profile functions are implemented here even though a separate User module directory exists.
+
+## Profile avatar uploads
+
+`PATCH /api/v1/auth/profile` accepts multipart `avatar` (one JPEG/PNG/WebP file, 2 MiB) and normal profile fields. The authenticated user owns the destination; a client cannot select another user ID. Profile responses include the stored avatar URL. Avatars are public assets. See [FILE_UPLOADS.md](FILE_UPLOADS.md) for examples and replacement behavior.

@@ -46,9 +46,11 @@ These guides describe the code as implemented, including incomplete modules and 
 | `/api/v1/categories` | Implemented public and admin APIs | [Category](CATEGORY.md) |
 | `/api/v1/products` | Implemented public and admin APIs | [Product](PRODUCT.md) |
 | `/api/v1/cart` | Implemented; USER access required | [Cart](CART_MODULE.md) |
-| `/api/v1/orders` | Checkout only | [Order](ORDER.md) |
+| `/api/v1/orders` | Checkout, history, details, admin fulfillment, cancellation | [Order](ORDER.md) |
 | `/api/v1/users` | Empty mounted router | [User](USER.md) |
 | `/api/v1/payments` | Empty mounted router | [Payment](PAYMENT.md) |
 | `/test` | Public GET smoke-test response | [Architecture](ARCHITECTURE.md) |
 
 API examples use fictitious IDs. Replace them with records from your database. Authorization is `user <token>` or `admin <token>` in this project; it is not the usual `Bearer` scheme.
+
+- [Shared image uploads](FILE_UPLOADS.md): multipart APIs, security checks, local storage configuration, and cleanup.

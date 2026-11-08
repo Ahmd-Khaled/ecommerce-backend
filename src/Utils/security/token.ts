@@ -1,47 +1,37 @@
+import { JwtPayload, Secret, sign, SignOptions, verify } from 'jsonwebtoken';
 
-import {
-  JwtPayload,
-  Secret,
-  sign,
-  SignOptions,
-  verify,
-} from "jsonwebtoken";
+import { Types } from 'mongoose';
+import { v4 as uuid } from 'uuid';
 
-import { Types } from "mongoose";
-import { v4 as uuid } from "uuid";
+import { HUserDocument, RoleEnum } from '../../DB/models/user/user.interface';
 
-import {
-  HUserDocument,
-  RoleEnum,
-} from "../../DB/models/user/user.interface";
-
-import { TokenModel } from "../../DB/models/token/token.model";
-import { TokenRepository } from "../../DB/repository/token.repository";
-import { userRepository } from "../../DB/repository/user.repository";
+import { TokenModel } from '../../DB/models/token/token.model';
+import { TokenRepository } from '../../DB/repository/token.repository';
+import { userRepository } from '../../DB/repository/user.repository';
 
 import {
   BadRequestException,
   ForbiddenException,
   UnauthorizedException,
-} from "../response/error.response";
+} from '../response/error.response';
 
 // ============================================================================
 // 1. Enums
 // ============================================================================
 
 export enum SignatureLevelEnum {
-  USER = "user",
-  ADMIN = "admin",
+  USER = 'user',
+  ADMIN = 'admin',
 }
 
 export enum TokenTypeEnum {
-  ACCESS = "access",
-  REFRESH = "refresh",
+  ACCESS = 'access',
+  REFRESH = 'refresh',
 }
 
 export enum LogoutEnum {
-  ONLY = "only",
-  ALL = "all",
+  ONLY = 'only',
+  ALL = 'all',
 }
 
 // ============================================================================
@@ -73,8 +63,8 @@ export const verifyToken = async ({
 }): Promise<JwtPayload> => {
   const decoded = await verify(token, secret);
 
-  if (typeof decoded === "string" || !decoded) {
-    throw new UnauthorizedException("Invalid Token Payload");
+  if (typeof decoded === 'string' || !decoded) {
+    throw new UnauthorizedException('Invalid Token Payload');
   }
 
   return decoded;
@@ -84,9 +74,7 @@ export const verifyToken = async ({
 // 4. Get Signature Level Based on User Role
 // ============================================================================
 
-export const getSignatureLevel = (
-  role: RoleEnum = RoleEnum.USER
-): SignatureLevelEnum => {
+export const getSignatureLevel = (role: RoleEnum = RoleEnum.USER): SignatureLevelEnum => {
   switch (role) {
     case RoleEnum.USER:
       return SignatureLevelEnum.USER;
@@ -95,9 +83,7 @@ export const getSignatureLevel = (
       return SignatureLevelEnum.ADMIN;
 
     default:
-      throw new ForbiddenException(
-        "This account is not allowed to generate login credentials"
-      );
+      throw new ForbiddenException('This account is not allowed to generate login credentials');
   }
 };
 
@@ -106,23 +92,23 @@ export const getSignatureLevel = (
 // ============================================================================
 
 export const getSignatures = async (
-  signatureLevel: SignatureLevelEnum = SignatureLevelEnum.USER
+  signatureLevel: SignatureLevelEnum = SignatureLevelEnum.USER,
 ): Promise<{
   access_token: string;
   refresh_token: string;
 }> => {
-  let access_token = "";
-  let refresh_token = "";
+  let access_token = '';
+  let refresh_token = '';
 
   switch (signatureLevel) {
     case SignatureLevelEnum.USER:
-      access_token = process.env.ACCESS_USER_TOKEN_SECRET ?? "";
-      refresh_token = process.env.REFRESH_USER_TOKEN_SECRET ?? "";
+      access_token = process.env.ACCESS_USER_TOKEN_SECRET ?? '';
+      refresh_token = process.env.REFRESH_USER_TOKEN_SECRET ?? '';
       break;
 
     case SignatureLevelEnum.ADMIN:
-      access_token = process.env.ACCESS_ADMIN_TOKEN_SECRET ?? "";
-      refresh_token = process.env.REFRESH_ADMIN_TOKEN_SECRET ?? "";
+      access_token = process.env.ACCESS_ADMIN_TOKEN_SECRET ?? '';
+      refresh_token = process.env.REFRESH_ADMIN_TOKEN_SECRET ?? '';
       break;
   }
 
@@ -136,20 +122,11 @@ export const getSignatures = async (
 // 6. Validate JWT Configuration
 // ============================================================================
 
-const getTokenExpiration = (
-  value: string | undefined,
-  envName: string
-): number => {
+const getTokenExpiration = (value: string | undefined, envName: string): number => {
   const expiration = Number(value);
 
-  if (
-    !value ||
-    !Number.isSafeInteger(expiration) ||
-    expiration <= 0
-  ) {
-    throw new Error(
-      `Invalid JWT expiration configuration: ${envName}`
-    );
+  if (!value || !Number.isSafeInteger(expiration) || expiration <= 0) {
+    throw new Error(`Invalid JWT expiration configuration: ${envName}`);
   }
 
   return expiration;
@@ -160,7 +137,7 @@ const getTokenExpiration = (
 // ============================================================================
 
 export const createLoginCredentials = async (
-  user: HUserDocument
+  user: HUserDocument,
 ): Promise<{
   accessToken: string;
   refreshToken: string;
@@ -171,18 +148,12 @@ export const createLoginCredentials = async (
   const signatures = await getSignatures(signatureLevel);
 
   if (!signatures.access_token || !signatures.refresh_token) {
-    throw new Error("JWT signing secrets are not configured");
+    throw new Error('JWT signing secrets are not configured');
   }
 
-  const accessExpiresIn = getTokenExpiration(
-    process.env.ACCESS_EXPIRES_IN,
-    "ACCESS_EXPIRES_IN"
-  );
+  const accessExpiresIn = getTokenExpiration(process.env.ACCESS_EXPIRES_IN, 'ACCESS_EXPIRES_IN');
 
-  const refreshExpiresIn = getTokenExpiration(
-    process.env.REFRESH_EXPIRES_IN,
-    "REFRESH_EXPIRES_IN"
-  );
+  const refreshExpiresIn = getTokenExpiration(process.env.REFRESH_EXPIRES_IN, 'REFRESH_EXPIRES_IN');
 
   // Each token has its own unique identifier.
   const accessJti = uuid();
@@ -245,35 +216,26 @@ export const decodedToken = async ({
   const parts = authorization.trim().split(/\s+/);
 
   if (parts.length !== 2) {
-    throw new UnauthorizedException("Invalid Authorization Header");
+    throw new UnauthorizedException('Invalid Authorization Header');
   }
 
   const [signatureLevel, token] = parts;
 
-  if (
-    !token ||
-    !Object.values(SignatureLevelEnum).includes(
-      signatureLevel as SignatureLevelEnum
-    )
-  ) {
-    throw new UnauthorizedException("Invalid Authorization Scheme");
+  if (!token || !Object.values(SignatureLevelEnum).includes(signatureLevel as SignatureLevelEnum)) {
+    throw new UnauthorizedException('Invalid Authorization Scheme');
   }
 
   // --------------------------------------------------------------------------
   // 2. Get Correct Secret
   // --------------------------------------------------------------------------
 
-  const signatures = await getSignatures(
-    signatureLevel as SignatureLevelEnum
-  );
+  const signatures = await getSignatures(signatureLevel as SignatureLevelEnum);
 
   const secret =
-    tokenType === TokenTypeEnum.REFRESH
-      ? signatures.refresh_token
-      : signatures.access_token;
+    tokenType === TokenTypeEnum.REFRESH ? signatures.refresh_token : signatures.access_token;
 
   if (!secret) {
-    throw new UnauthorizedException("Invalid Token Configuration");
+    throw new UnauthorizedException('Invalid Token Configuration');
   }
 
   // --------------------------------------------------------------------------
@@ -290,15 +252,15 @@ export const decodedToken = async ({
   // --------------------------------------------------------------------------
 
   if (
-    typeof decoded._id !== "string" ||
-    typeof decoded.jti !== "string" ||
-    typeof decoded.iat !== "number" ||
-    typeof decoded.exp !== "number" ||
-    typeof decoded.tokenVersion !== "number" ||
+    typeof decoded._id !== 'string' ||
+    typeof decoded.jti !== 'string' ||
+    typeof decoded.iat !== 'number' ||
+    typeof decoded.exp !== 'number' ||
+    typeof decoded.tokenVersion !== 'number' ||
     !Number.isSafeInteger(decoded.tokenVersion) ||
     decoded.tokenVersion < 0
   ) {
-    throw new UnauthorizedException("Invalid Token Payload");
+    throw new UnauthorizedException('Invalid Token Payload');
   }
 
   // --------------------------------------------------------------------------
@@ -312,9 +274,7 @@ export const decodedToken = async ({
   });
 
   if (!user) {
-    throw new UnauthorizedException(
-      "Invalid or old login credentials"
-    );
+    throw new UnauthorizedException('Invalid or old login credentials');
   }
 
   // --------------------------------------------------------------------------
@@ -322,22 +282,15 @@ export const decodedToken = async ({
   // --------------------------------------------------------------------------
 
   if (decoded.tokenVersion !== user.tokenVersion) {
-    throw new UnauthorizedException(
-      "Your session has expired. Please login again."
-    );
+    throw new UnauthorizedException('Your session has expired. Please login again.');
   }
 
   // --------------------------------------------------------------------------
   // 7. Check Credential Change Timestamp
   // --------------------------------------------------------------------------
 
-  if (
-    (user.changeCredentialsTime?.getTime() ?? 0) >
-    decoded.iat * 1000
-  ) {
-    throw new UnauthorizedException(
-      "Invalid or old login credentials, you need to login again"
-    );
+  if ((user.changeCredentialsTime?.getTime() ?? 0) > decoded.iat * 1000) {
+    throw new UnauthorizedException('Invalid or old login credentials, you need to login again');
   }
 
   // --------------------------------------------------------------------------
@@ -353,9 +306,7 @@ export const decodedToken = async ({
   const isRevoked = Boolean(tokenCheck);
 
   if (isRevoked && !allowRevoked) {
-    throw new UnauthorizedException(
-      "Invalid or old login credentials"
-    );
+    throw new UnauthorizedException('Invalid or old login credentials');
   }
 
   // --------------------------------------------------------------------------
@@ -373,13 +324,9 @@ export const decodedToken = async ({
 // 9. Revoke Multiple Tokens
 // ============================================================================
 
-export const createRevokeTokens = async (
-  decodedTokens: JwtPayload[]
-) => {
+export const createRevokeTokens = async (decodedTokens: JwtPayload[]) => {
   if (!decodedTokens.length) {
-    throw new BadRequestException(
-      "No tokens provided for revocation"
-    );
+    throw new BadRequestException('No tokens provided for revocation');
   }
 
   // --------------------------------------------------------------------------
@@ -388,18 +335,18 @@ export const createRevokeTokens = async (
 
   const records = decodedTokens.map((decoded) => {
     if (
-      typeof decoded.jti !== "string" ||
-      typeof decoded.exp !== "number" ||
-      typeof decoded._id !== "string" ||
+      typeof decoded.jti !== 'string' ||
+      typeof decoded.exp !== 'number' ||
+      typeof decoded._id !== 'string' ||
       !Types.ObjectId.isValid(decoded._id)
     ) {
-      throw new BadRequestException("Invalid token payload");
+      throw new BadRequestException('Invalid token payload');
     }
 
     const expiresAt = new Date(decoded.exp * 1000);
 
     if (Number.isNaN(expiresAt.getTime())) {
-      throw new BadRequestException("Invalid token expiration");
+      throw new BadRequestException('Invalid token expiration');
     }
 
     return {
@@ -413,11 +360,7 @@ export const createRevokeTokens = async (
   // Prevent Duplicate Token IDs
   // --------------------------------------------------------------------------
 
-  const uniqueRecords = [
-    ...new Map(
-      records.map((record) => [record.jti, record])
-    ).values(),
-  ];
+  const uniqueRecords = [...new Map(records.map((record) => [record.jti, record])).values()];
 
   // --------------------------------------------------------------------------
   // Save Revoked Tokens
@@ -430,7 +373,7 @@ export const createRevokeTokens = async (
   });
 
   if (!results || results.length !== uniqueRecords.length) {
-    throw new BadRequestException("Failed to revoke tokens");
+    throw new BadRequestException('Failed to revoke tokens');
   }
 
   return results;
@@ -440,9 +383,7 @@ export const createRevokeTokens = async (
 // 10. Revoke Single Token
 // ============================================================================
 
-export const createRevokeToken = async (
-  decoded: JwtPayload
-) => {
+export const createRevokeToken = async (decoded: JwtPayload) => {
   const [result] = await createRevokeTokens([decoded]);
 
   return result;

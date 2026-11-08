@@ -1,22 +1,18 @@
-import {
-  HydratedDocument,
-  Model,
-  Types,
-} from "mongoose";
+import { HydratedDocument, Model, Types } from 'mongoose';
 
 // ============================================================================
 // 1. Enums
 // ============================================================================
 
 export enum GenderEnum {
-  MALE = "male",
-  FEMALE = "female",
+  MALE = 'male',
+  FEMALE = 'female',
 }
 
 export enum RoleEnum {
-  USER = "user",
-  ADMIN = "admin",
-  GUEST = "guest",
+  USER = 'user',
+  ADMIN = 'admin',
+  GUEST = 'guest',
 }
 
 // ============================================================================
@@ -52,6 +48,7 @@ export interface IUser {
 
   // Contact information
   phone?: string;
+  avatar?: string;
   address?: IUserAddress[];
   gender?: GenderEnum;
 
@@ -110,17 +107,8 @@ export interface IUserDocumentLocals {
 // 6. Mongoose Document & Model Types
 // ============================================================================
 
-export type HUserDocument = HydratedDocument<
-  IUser,
-  IUserVirtuals
-> & {
+export type HUserDocument = HydratedDocument<IUser, IUserVirtuals> & {
   $locals: IUserDocumentLocals;
 };
 
-export type UserModelType = Model<
-  IUser,
-  {},
-  {},
-  IUserVirtuals,
-  HUserDocument
->;
+export type UserModelType = Model<IUser, {}, {}, IUserVirtuals, HUserDocument>;

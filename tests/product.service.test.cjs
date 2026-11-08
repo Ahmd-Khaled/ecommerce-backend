@@ -9,6 +9,12 @@ const { ProductModel } = require('../dist/DB/models/product/product.model');
 const id = new Types.ObjectId();
 const input = { name: 'Sample', slug: 'sample', description: 'Sample product description', sku: 'SKU-001', price: 10, stock: 0, images: ['https://example.com/a.png'], category: id.toString() };
 
+// Database-free tests exercise business rules; real transaction tests live separately.
+require('node:test').beforeEach(t => {
+  t.mock.method(categoryRepository, 'withHierarchyTransaction', async work => work(undefined));
+  t.mock.method(categoryRepository, 'withSnapshot', async work => work(undefined));
+});
+
 test('admin listing includes both statuses and counts the same filter', async t => {
   const products = [{ isActive: true }, { isActive: false }];
   t.mock.method(repo, 'findProducts', async (filter, options) => {

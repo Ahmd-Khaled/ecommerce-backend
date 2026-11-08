@@ -5,6 +5,8 @@ const { CartModel } = require('../dist/DB/models/cart/cart.model');
 const { ProductModel } = require('../dist/DB/models/product/product.model');
 const { OrderModel } = require('../dist/DB/models/order/order.model');
 const { cartService } = require('../dist/Modules/cart/cart.service');
+const { UserModel } = require('../dist/DB/models/user/user.model');
+const { randomUUID } = require('node:crypto');
 const { orderService } = require('../dist/Modules/order/order.service');
 
 // Explicit test URI only; never use the application's MONGO_URI.
@@ -22,12 +24,12 @@ test('real MongoDB concurrency and transaction guarantees', { skip: !process.env
   const product = async (stock = 10) => {
     const id = new mongoose.Types.ObjectId();
     // Minimal database fixture bypasses unrelated catalog validation.
-    await ProductModel.collection.insertOne({ _id: id, slug: id.toString(), sku: id.toString(), price: 5, stock, isActive: true });
+    await ProductModel.collection.insertOne({ _id: id, slug: id.toString(), sku: id.toString(), name: 'Test product', price: 5, stock, isActive: true });
     return id;
   };
   const checkout = async owner => {
     const cart = await CartModel.findOne({ user: owner });
-    return { version: cart.__v, items: cart.items.map(item => ({ productId: item.product.toString(), unitPrice: 5 })) };
+    const addressId = new mongoose.Types.ObjectId(); await UserModel.collection.updateOne({ _id: owner }, { $set: { email: owner.toString() + '@example.test', address: [{ _id: addressId, fullName: 'Buyer', phone: '123', country: 'EG', city: 'Cairo', street: 'Street' }] } }, { upsert: true }); return { addressId: addressId.toString(), version: cart.__v, items: cart.items.map(item => ({ productId: item.product.toString(), unitPriceMinor: 500 })) };
   };
 
   await t.test('concurrent creation produces one cart and retains both additions', async () => {
@@ -49,7 +51,7 @@ test('real MongoDB concurrency and transaction guarantees', { skip: !process.env
     const owners = [user(), user()], id = await product(1);
     for (const owner of owners) await cartService.addCartItem(owner, { productId: id.toString(), quantity: 1 });
     const inputs = await Promise.all(owners.map(checkout));
-    const results = await Promise.allSettled(owners.map((owner, i) => orderService.checkout(owner, inputs[i])));
+    const results = await Promise.allSettled(owners.map((owner, i) => orderService.checkout(owner, inputs[i], randomUUID())));
     assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
     assert.equal((await ProductModel.findById(id)).stock, 0);
     assert.equal(await OrderModel.countDocuments({ user: { $in: owners } }), 1);
@@ -61,7 +63,7 @@ test('real MongoDB concurrency and transaction guarantees', { skip: !process.env
     for (const id of [first, second]) await cartService.addCartItem(owner, { productId: id.toString(), quantity: 2 });
     const input = await checkout(owner);
     await ProductModel.collection.updateOne({ _id: second }, { $set: { price: 6 } });
-    await assert.rejects(orderService.checkout(owner, input), { statusCode: 409 });
+    await assert.rejects(orderService.checkout(owner, input, randomUUID()), { statusCode: 409 });
     assert.equal((await ProductModel.findById(first)).stock, 10);
     assert.equal((await CartModel.findOne({ user: owner })).items.length, 2);
     assert.equal(await OrderModel.countDocuments({ user: owner }), 0);
@@ -71,7 +73,7 @@ test('real MongoDB concurrency and transaction guarantees', { skip: !process.env
     const owner = user(), id = await product();
     await cartService.addCartItem(owner, { productId: id.toString(), quantity: 1 });
     const input = await checkout(owner);
-    const results = await Promise.allSettled([1, 2].map(() => orderService.checkout(owner, input)));
+    const results = await Promise.allSettled([1, 2].map(() => orderService.checkout(owner, input, randomUUID())));
     assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
     assert.equal((await ProductModel.findById(id)).stock, 9);
     assert.equal(await OrderModel.countDocuments({ user: owner }), 1);
@@ -90,7 +92,7 @@ test('real MongoDB concurrency and transaction guarantees', { skip: !process.env
     await cartService.addCartItem(owner, { productId: id.toString(), quantity: 1 });
     const input = await checkout(owner);
     await cartService.increaseCartItem(owner, id.toString());
-    await assert.rejects(orderService.checkout(owner, input), { statusCode: 409 });
+    await assert.rejects(orderService.checkout(owner, input, randomUUID()), { statusCode: 409 });
     assert.equal((await ProductModel.findById(id)).stock, 10);
     assert.equal((await CartModel.findOne({ user: owner })).items[0].quantity, 2);
   });

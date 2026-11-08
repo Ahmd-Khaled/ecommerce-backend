@@ -1,32 +1,40 @@
-
-import type { RequestHandler } from "express";
-import type { IChangePasswordDTO, IConfirmEmailDTO, IForgotPasswordDTO, ILoginDTO, IResendConfirmEmailDTO, IResetPasswordDTO, ISignupDTO, IUpdateProfileDTO } from "./auth.dto";
-import { authService } from "./auth.service";
-import { clearRefreshTokenCookie, setRefreshTokenCookie } from "./auth.cookie";
-import type { IRefreshTokenDTO } from "./auth.dto";
-import { createRevokeToken } from "../../Utils/security/token";
-import { BadRequestException, UnauthorizedException } from "../../Utils/response/error.response";
+import type { RequestHandler } from 'express';
+import { uploadExpected } from '../../Middlewares/upload.middlewares';
+import type {
+  IChangePasswordDTO,
+  IConfirmEmailDTO,
+  IForgotPasswordDTO,
+  ILoginDTO,
+  IResendConfirmEmailDTO,
+  IResetPasswordDTO,
+  ISignupDTO,
+  IUpdateProfileDTO,
+} from './auth.dto';
+import { authService } from './auth.service';
+import { clearRefreshTokenCookie, setRefreshTokenCookie } from './auth.cookie';
+import type { IRefreshTokenDTO } from './auth.dto';
+import { createRevokeToken } from '../../Utils/security/token';
+import { BadRequestException, UnauthorizedException } from '../../Utils/response/error.response';
 
 // ============================================================================
 // Auth Controller
 // ============================================================================
 
 class AuthController {
-
   testRevoke: RequestHandler = async (req, res): Promise<void> => {
     if (!req.decoded) {
-      throw new UnauthorizedException("Missing authenticated token");
+      throw new UnauthorizedException('Missing authenticated token');
     }
 
     const result = await createRevokeToken(req.decoded);
 
     if (!result) {
-      throw new BadRequestException("Failed to revoke token");
+      throw new BadRequestException('Failed to revoke token');
     }
 
     res.status(200).json({
       success: true,
-      message: "Token revoked successfully",
+      message: 'Token revoked successfully',
       data: {
         jti: result.jti,
         expiresAt: result.expiresAt,
@@ -39,7 +47,6 @@ class AuthController {
   // --------------------------------------------------------------------------
 
   register: RequestHandler = async (req, res): Promise<void> => {
-
     // 1. Extract validated request body.
     const data = req.body as ISignupDTO;
 
@@ -56,10 +63,7 @@ class AuthController {
   // --------------------------------------------------------------------------
   // Confirm Email
   // --------------------------------------------------------------------------
-  confirmEmail: RequestHandler = async (
-    req,
-    res
-  ): Promise<void> => {
+  confirmEmail: RequestHandler = async (req, res): Promise<void> => {
     const data = req.body as IConfirmEmailDTO;
 
     const result = await authService.confirmEmail(data, req.ip);
@@ -70,20 +74,14 @@ class AuthController {
     });
   };
 
-
   // --------------------------------------------------------------------------
   // Resend Confirm Email
   // --------------------------------------------------------------------------
 
-  resendConfirmEmail: RequestHandler = async (
-    req,
-    res
-  ): Promise<void> => {
+  resendConfirmEmail: RequestHandler = async (req, res): Promise<void> => {
     const data = req.body as IResendConfirmEmailDTO;
 
-    const result = await authService.resendConfirmEmail(
-      data.email
-    );
+    const result = await authService.resendConfirmEmail(data.email);
 
     res.status(200).json({
       success: true,
@@ -91,11 +89,9 @@ class AuthController {
     });
   };
 
-
   // --------------------------------------------------------------------------
   // Login
   // --------------------------------------------------------------------------
-
 
   login: RequestHandler = async (req, res): Promise<void> => {
     const data = req.body as ILoginDTO;
@@ -104,7 +100,7 @@ class AuthController {
 
     const { refreshToken, ...tokens } = result.tokens;
     setRefreshTokenCookie(res, refreshToken, tokens.tokenType);
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader('Cache-Control', 'no-store');
 
     res.status(200).json({
       success: true,
@@ -136,9 +132,7 @@ class AuthController {
   // ============================================================================
 
   logoutAllDevices: RequestHandler = async (req, res): Promise<void> => {
-    const result = await authService.logoutAllDevices(
-      req.user!._id
-    );
+    const result = await authService.logoutAllDevices(req.user!._id);
 
     clearRefreshTokenCookie(res);
 
@@ -152,17 +146,12 @@ class AuthController {
   // Refresh Token
   // ============================================================================
 
-  refreshToken: RequestHandler = async (
-    req,
-    res
-  ): Promise<void> => {
-    const result = await authService.refreshToken(
-      (req.cookies as IRefreshTokenDTO).refreshToken
-    );
+  refreshToken: RequestHandler = async (req, res): Promise<void> => {
+    const result = await authService.refreshToken((req.cookies as IRefreshTokenDTO).refreshToken);
 
     const { refreshToken, ...tokens } = result.tokens;
     setRefreshTokenCookie(res, refreshToken, tokens.tokenType);
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader('Cache-Control', 'no-store');
 
     res.status(200).json({
       success: true,
@@ -175,32 +164,24 @@ class AuthController {
   // Get Profile
   // ============================================================================
 
-  getProfile: RequestHandler = async (
-    req,
-    res
-  ): Promise<void> => {
-    const result = await authService.getProfile(
-      req.user!._id
-    );
+  getProfile: RequestHandler = async (req, res): Promise<void> => {
+    const result = await authService.getProfile(req.user!._id);
 
     res.status(200).json({
       success: true,
-      message: "Profile retrieved successfully",
+      message: 'Profile retrieved successfully',
       ...result,
     });
   };
-
 
   // ============================================================================
   // Update Profile
   // ============================================================================
-  updateProfile: RequestHandler = async (
-    req,
-    res
-  ): Promise<void> => {
+  updateProfile: RequestHandler = async (req, res): Promise<void> => {
     const result = await authService.updateProfile(
       req.user!._id,
-      req.body as IUpdateProfileDTO
+      req.body as IUpdateProfileDTO,
+      ...(uploadExpected(req) ? ([uploadExpected(req)!] as const) : []),
     );
 
     res.status(200).json({
@@ -208,17 +189,13 @@ class AuthController {
       ...result,
     });
   };
-
 
   // ============================================================================
   // Change Password
   // ============================================================================
 
   changePassword: RequestHandler = async (req, res): Promise<void> => {
-    const result = await authService.changePassword(
-      req.user!._id,
-      req.body as IChangePasswordDTO
-    );
+    const result = await authService.changePassword(req.user!._id, req.body as IChangePasswordDTO);
 
     clearRefreshTokenCookie(res);
 
@@ -227,15 +204,12 @@ class AuthController {
       ...result,
     });
   };
-
 
   // ============================================================================
   // Forgot Password
   // ============================================================================
   forgotPassword: RequestHandler = async (req, res): Promise<void> => {
-    const result = await authService.forgotPassword(
-      req.body as IForgotPasswordDTO
-    );
+    const result = await authService.forgotPassword(req.body as IForgotPasswordDTO);
 
     res.status(200).json({
       success: true,
@@ -243,15 +217,11 @@ class AuthController {
     });
   };
 
-
   // ============================================================================
   // Reset Password
   // ============================================================================
   resetPassword: RequestHandler = async (req, res): Promise<void> => {
-    const result = await authService.resetPassword(
-      req.body as IResetPasswordDTO,
-      req.ip
-    );
+    const result = await authService.resetPassword(req.body as IResetPasswordDTO, req.ip);
 
     clearRefreshTokenCookie(res);
 
@@ -260,7 +230,6 @@ class AuthController {
       ...result,
     });
   };
-
 }
 
 // ============================================================================

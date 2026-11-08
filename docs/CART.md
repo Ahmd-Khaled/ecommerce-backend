@@ -17,12 +17,13 @@ adds/increases are advisory: no inventory is reserved or deducted.
 ## Checkout
 
 `POST /api/v1/orders/checkout` uses the same authenticated USER role as the cart.
-Send the last reviewed cart version and a price confirmation for every line:
+Send an Idempotency-Key header (16–128 letters, digits, underscores or hyphens), your saved address ID, the last reviewed cart version, and a minor-unit price confirmation for every line:
 
 ```json
 {
   "version": 3,
-  "items": [{ "productId": "507f1f77bcf86cd799439011", "unitPrice": 25 }]
+  "addressId": "507f1f77bcf86cd799439012",
+  "items": [{ "productId": "507f1f77bcf86cd799439011", "unitPriceMinor": 2500 }]
 }
 ```
 
@@ -31,7 +32,7 @@ exact product set, checks active products and current prices, deducts stock with
 `stock >= quantity` guards, persists an order with price snapshots, and clears
 and increments the cart version. Any failure rolls back all writes. A stale
 cart, changed price, or unavailable item returns 409. Duplicate checkout of the
-same cart version cannot purchase twice. An empty cart returns 400. This creates
+same cart version cannot purchase twice. Reusing the same key/body returns the original order (200); changing the body with the same key returns 409. A new checkout with an empty cart returns 400. This creates
 a placed order; it does not charge a payment provider.
 
 MongoDB must run as a replica set or sharded cluster supporting transactions.
@@ -48,3 +49,7 @@ tests. These create and delete a uniquely named test database, never using the
 application's `MONGO_URI`. `npm test` builds and runs all test files.
 
 The project has no lint script or lint configuration.
+
+## Order checkout version 2
+
+Cart responses now additionally expose currency, currencyExponent, subtotalMinor, and unitPriceMinor/subtotalMinor for available lines. An unavailable line has subtotalMinor=0 and no confirmed unit price. Existing price/subtotal fields retain their major-unit meaning. Checkout now requires a saved address ID and Idempotency-Key header, and confirms unitPriceMinor instead of unitPrice. See [ORDER.md](ORDER.md) for the current request contract.

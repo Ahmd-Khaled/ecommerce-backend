@@ -1,0 +1,72 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const { Types } = require('mongoose');
+const token = require('../dist/Utils/security/token');
+const { orderRouter } = require('../dist/Modules/order/order.routes');
+const { orderRepository } = require('../dist/DB/repository/order.repository');
+const { OrderModel } = require('../dist/DB/models/order/order.model');
+const { globalErrorHandler } = require('../dist/Utils/response/error.response');
+
+test('HTTP routes enforce roles, validate requests, scope owners and distinguish checkout replay', async t => {
+  const user = new Types.ObjectId(), id = new Types.ObjectId();
+  t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: user, role: authorization }, decoded: {} }));
+  const calls = [];
+  t.mock.method(orderRepository, 'list', async (...args) => { calls.push(['list', ...args]); return { orders: [], pagination: {} }; });
+  t.mock.method(orderRepository, 'details', async (...args) => { calls.push(['details', ...args]); return {}; });
+  t.mock.method(orderRepository, 'transition', async (...args) => { calls.push(['transition', ...args]); return {}; });
+  let replayed = false;
+  t.mock.method(orderRepository, 'checkout', async (...args) => { calls.push(['checkout', ...args]); return { order: { _id: id }, replayed }; });
+  const app = express();
+  app.use(express.json());
+  app.use('/orders', orderRouter);
+  app.use(globalErrorHandler);
+  const server = app.listen(0);
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port + '/orders';
+  const request = async (path, role = 'user', method = 'GET', body, extra = {}) => {
+    const headers = { ...extra };
+    if (role) headers.authorization = role;
+    if (body !== undefined) headers['content-type'] = 'application/json';
+    return fetch(base + path, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  };
+  assert.equal((await request('', null)).status, 401);
+  assert.equal((await request('/admin', 'user')).status, 403);
+  assert.equal((await request('', 'admin')).status, 403);
+  assert.equal((await request('/admin', 'admin')).status, 200);
+  assert.equal(calls.at(-1)[0], 'list');
+  assert.equal(calls.at(-1)[2], undefined);
+  assert.equal((await request('')).status, 200);
+  assert.equal(calls.at(-1)[2], user);
+  assert.equal((await request('/' + id)).status, 200);
+  assert.equal(calls.at(-1)[2], user);
+  assert.equal((await request('/admin/' + id, 'admin')).status, 200);
+  assert.equal(calls.at(-1)[2], undefined);
+  assert.equal((await request('/not-an-id')).status, 400);
+  assert.equal((await request('?user=' + id)).status, 400);
+  assert.equal((await request('?limit=101')).status, 400);
+  assert.equal((await request('/admin?from=2026-12-01T00:00:00Z&to=2026-01-01T00:00:00Z', 'admin')).status, 400);
+  assert.equal((await request('/admin?from=2026-01-01T00:00:00Z&to=2026-01-01T00:00:00.100Z', 'admin')).status, 200);
+  assert.equal((await request('/' + id + '/cancel', 'user', 'PATCH', {})).status, 200);
+  assert.equal(calls.at(-1)[3], false);
+  assert.equal((await request('/admin/' + id + '/status', 'admin', 'PATCH', { expectedStatus: 'placed', status: 'processing' })).status, 200);
+  assert.equal(calls.at(-1)[3], true);
+  assert.equal((await request('/admin/' + id + '/status', 'admin', 'PATCH', { status: 'processing' })).status, 400);
+  const body = { addressId: id.toString(), version: 0, items: [{ productId: id.toString(), unitPriceMinor: 100 }] };
+  assert.equal((await request('/checkout', 'user', 'POST', body)).status, 400);
+  const headers = { 'Idempotency-Key': 'http-checkout-key-123' };
+  assert.equal((await request('/checkout', 'user', 'POST', body, headers)).status, 201);
+  replayed = true;
+  assert.equal((await request('/checkout', 'user', 'POST', body, headers)).status, 200);
+});
+
+test('detail database predicate includes owner and uses identical 404 for missing/foreign', async t => {
+  const user = new Types.ObjectId(), id = new Types.ObjectId();
+  t.mock.method(OrderModel, 'findOne', filter => {
+    assert.equal(filter.user, user);
+    assert.equal(filter._id.toString(), id.toString());
+    return { exec: async () => null };
+  });
+  await assert.rejects(orderRepository.details(id.toString(), user), { statusCode: 404, message: 'Order not found' });
+});

@@ -1,8 +1,4 @@
-import {
-  model,
-  models,
-  Schema,
-} from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 import type {
   IUser,
@@ -11,15 +7,12 @@ import type {
   IUserVirtuals,
   UserModelType,
   HUserDocument,
-} from "./user.interface";
+} from './user.interface';
 
-import {
-  GenderEnum,
-  RoleEnum,
-} from "./user.interface";
+import { GenderEnum, RoleEnum } from './user.interface';
 
-import { generateHash } from "../../../Utils/security/hash";
-import { enqueueEmail } from "../../../Utils/email/email.queue";
+import { generateHash } from '../../../Utils/security/hash';
+import { enqueueEmail } from '../../../Utils/email/email.queue';
 
 // ============================================================================
 // 1. Helper Functions
@@ -33,28 +26,23 @@ import { enqueueEmail } from "../../../Utils/email/email.queue";
 const generateSlug = (value: string): string => {
   return value
     .trim()
-    .normalize("NFKC")
+    .normalize('NFKC')
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
 };
 
 /**
  * Returns the full username from first and last names.
  */
-const generateUsername = (
-  firstName: string,
-  lastName: string
-): string => {
+const generateUsername = (firstName: string, lastName: string): string => {
   return `${firstName} ${lastName}`.trim();
 };
 
 /**
  * Removes sensitive fields before serialization.
  */
-const removeSensitiveFields = (
-  ret: Record<string, unknown>
-): Record<string, unknown> => {
+const removeSensitiveFields = (ret: Record<string, unknown>): Record<string, unknown> => {
   delete ret.password;
   delete ret.confirmEmailOTP;
   delete ret.resetPasswordOTP;
@@ -122,24 +110,20 @@ const UserAddressSchema = new Schema<IUserAddress>(
   },
   {
     _id: true,
-  }
+  },
 );
 
 // ============================================================================
 // 3. User Schema
 // ============================================================================
 
-export const UserSchema = new Schema<
-  IUser,
-  UserModelType,
-  {},
-  IUserVirtuals
->(
+export const UserSchema = new Schema<IUser, UserModelType, {}, IUserVirtuals>(
   {
     // ------------------------------------------------------------------------
     // Personal Information
     // ------------------------------------------------------------------------
 
+    avatar: { type: String },
     firstName: {
       type: String,
       required: true,
@@ -329,9 +313,7 @@ export const UserSchema = new Schema<
       virtuals: true,
 
       transform: (_doc, ret) => {
-        return removeSensitiveFields(
-          ret as Record<string, unknown>
-        );
+        return removeSensitiveFields(ret as Record<string, unknown>);
       },
     },
 
@@ -343,12 +325,10 @@ export const UserSchema = new Schema<
       virtuals: true,
 
       transform: (_doc, ret) => {
-        return removeSensitiveFields(
-          ret as Record<string, unknown>
-        );
+        return removeSensitiveFields(ret as Record<string, unknown>);
       },
     },
-  }
+  },
 );
 
 // ============================================================================
@@ -367,22 +347,16 @@ export const UserSchema = new Schema<
  * username -> firstName + lastName + slug
  */
 
-UserSchema.virtual("username")
+UserSchema.virtual('username')
   .get(function () {
-    return generateUsername(
-      this.firstName,
-      this.lastName
-    );
+    return generateUsername(this.firstName, this.lastName);
   })
   .set(function (value: string) {
-    const normalizedValue = value
-      .trim()
-      .replace(/\s+/g, " ");
+    const normalizedValue = value.trim().replace(/\s+/g, ' ');
 
-    const [firstName = "", ...lastNameParts] =
-      normalizedValue.split(" ");
+    const [firstName = '', ...lastNameParts] = normalizedValue.split(' ');
 
-    const lastName = lastNameParts.join(" ");
+    const lastName = lastNameParts.join(' ');
 
     this.set({
       firstName,
@@ -402,18 +376,9 @@ UserSchema.virtual("username")
  * Runs before Mongoose validation.
  */
 
-UserSchema.pre("validate", function () {
-  if (
-    this.isNew ||
-    this.isModified("firstName") ||
-    this.isModified("lastName")
-  ) {
-    this.slug = generateSlug(
-      generateUsername(
-        this.firstName,
-        this.lastName
-      )
-    );
+UserSchema.pre('validate', function () {
+  if (this.isNew || this.isModified('firstName') || this.isModified('lastName')) {
+    this.slug = generateSlug(generateUsername(this.firstName, this.lastName));
   }
 });
 
@@ -431,7 +396,7 @@ UserSchema.pre("validate", function () {
  * 4. Hashes password reset OTP when modified.
  */
 
-UserSchema.pre("save", async function () {
+UserSchema.pre('save', async function () {
   const locals = this.$locals as IUserDocumentLocals;
 
   // Track whether this is a newly created user.
@@ -441,7 +406,7 @@ UserSchema.pre("save", async function () {
   // Password Hashing
   // --------------------------------------------------------------------------
 
-  if (this.isModified("password")) {
+  if (this.isModified('password')) {
     this.password = await generateHash(this.password);
   }
 
@@ -449,7 +414,7 @@ UserSchema.pre("save", async function () {
   // Email Confirmation OTP Hashing
   // --------------------------------------------------------------------------
 
-  if (this.isModified("confirmEmailOTP")) {
+  if (this.isModified('confirmEmailOTP')) {
     const plainOTP = this.confirmEmailOTP;
 
     if (plainOTP) {
@@ -464,13 +429,8 @@ UserSchema.pre("save", async function () {
   // Password Reset OTP Hashing
   // --------------------------------------------------------------------------
 
-  if (
-    this.isModified("resetPasswordOTP") &&
-    this.resetPasswordOTP
-  ) {
-    this.resetPasswordOTP = await generateHash(
-      this.resetPasswordOTP
-    );
+  if (this.isModified('resetPasswordOTP') && this.resetPasswordOTP) {
+    this.resetPasswordOTP = await generateHash(this.resetPasswordOTP);
   }
 });
 
@@ -486,7 +446,7 @@ UserSchema.pre("save", async function () {
  * 2. An email confirmation OTP was provided.
  */
 
-UserSchema.post("save", async function (doc: HUserDocument) {
+UserSchema.post('save', async function (doc: HUserDocument) {
   const locals = doc.$locals as IUserDocumentLocals;
 
   try {
@@ -494,7 +454,7 @@ UserSchema.post("save", async function (doc: HUserDocument) {
     const plainOTP = locals.confirmEmailPlainOTP;
 
     if (wasNew && plainOTP) {
-      await enqueueEmail("confirmEmail", {
+      await enqueueEmail('confirmEmail', {
         to: doc.email,
         username: doc.username,
         otp: plainOTP,
@@ -518,8 +478,4 @@ UserSchema.post("save", async function (doc: HUserDocument) {
  */
 
 export const UserModel: UserModelType =
-  (models.User as UserModelType | undefined) ??
-  model<IUser, UserModelType>(
-    "User",
-    UserSchema
-  );
+  (models.User as UserModelType | undefined) ?? model<IUser, UserModelType>('User', UserSchema);

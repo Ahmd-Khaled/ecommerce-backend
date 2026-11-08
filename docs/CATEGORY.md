@@ -60,4 +60,33 @@ The service checks that a parent exists and is active, then walks its entire anc
 
 Deletion loads the category, checks for any child category (including inactive ones), checks for any assigned product (including inactive ones), and then deletes. Child/product dependency failures return 400, missing records 404, invalid request schema 400, and unauthorized admin access 401/403.
 
-Hierarchy checks and writes use separate database operations. They are not protected by the cart checkout transaction and do not promise serializable hierarchy changes. Public list building also performs several reads rather than one snapshot. Existing tests cover visibility, cycle checks, product counts, deletion protection, and HTTP authorization; see `tests/category.*.test.cjs`.
+## Transactions and concurrency
+
+Category creation, updates (including active-status changes), and deletion run in MongoDB transactions with snapshot read concern, majority write concern, and primary read preference. Every hierarchy check, dependency check, and write receives the same explicit session. A failed validation or database operation rolls back the entire write. The driver retries transient transaction conflicts, rerunning validation on the new snapshot. Duplicate slugs still return 409; other application errors retain their existing status and message.
+
+Snapshot isolation alone cannot prevent write skew: two requests could update different nodes into a cycle. `category.transaction.ts` therefore increments a shared guard document as the first operation in each write transaction, before any validation reads. Conflicting transactions must retry after the preceding transaction commits. This orders hierarchy mutations across application processes and protects against opposing moves, longer cycles, parent deletion, and ancestor deactivation during validation. The guard lives in `category_hierarchy_guards`, separate from category documents, and is initialized idempotently with majority acknowledgement. It is not a process mutex or an expiring lock.
+
+Product creation and updates that assign a category participate in the same guard and transaction. This closes the assigned-product check/delete race. Other product operations retain their existing behavior. Deactivating a parent remains allowed and hides its descendants; it does not rewrite their active flags. An assignment committed before deactivation may therefore legitimately become hidden afterward.
+
+Public list, slug, tree, and subtree responses use a single snapshot transaction per request. Visibility, ancestry, pagination rows/totals, hierarchy, and product aggregation observe the same database snapshot. Tree assembly reuses the loaded category rows for ancestor count propagation. Operations sharing a session run sequentially; no parallel database operations run within these transactions. Admin reads retain their existing behavior.
+
+### Deployment and operational scope
+
+MongoDB must run as a replica set (including a single-node development replica set) or a transaction-capable sharded cluster. There is no unsafe fallback for standalone MongoDB. All application instances must use this write protocol; direct database writes, imports, and older application versions that bypass the guard are outside its guarantees. Roll out participating category and product writers together. Keep the guard collection intact and permit the application to create/update it.
+
+The shared guard deliberately serializes category writes and product category assignments. This favors correctness for catalog management at the cost of write contention. It does not lock public readers or unrelated product updates. Monitor transaction retries and latency if catalog write volume grows. The design follows MongoDB's [transaction production considerations](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/).
+
+### Tests
+
+`npm run test:category` builds TypeScript and runs category unit, HTTP, and integration tests. Without `MONGO_TEST_URI`, the real-database suite is explicitly skipped. To exercise concurrency and rollback, supply a disposable replica-set test connection:
+
+```powershell
+$env:MONGO_TEST_URI = 'mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true'
+npm run test:category
+```
+
+The integration suite creates a unique `category_test_*` database and drops only that database afterward; it never uses the application's database URI. It covers concurrent guard initialization, opposing and multi-node cycle attempts, deletion versus child creation/reparenting, ancestor deactivation, deletion versus product creation/reassignment, rollback after successful create/update/delete writes, and snapshot consistency during concurrent hierarchy/product changes. Existing unit and HTTP suites retain validation, visibility, counts, error, and authorization coverage. `npm test` runs the full project suite.
+
+## Local image uploads
+
+Admin create/update routes accept a multipart `image` (one JPEG/PNG/WebP file, 5 MiB), alongside validated form fields. Omission preserves the current image on update. See [FILE_UPLOADS.md](FILE_UPLOADS.md) for examples and lifecycle behavior.

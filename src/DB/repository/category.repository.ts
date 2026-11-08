@@ -1,34 +1,55 @@
+import { QueryFilter, Types, UpdateQuery, type ClientSession } from 'mongoose';
 
-import { QueryFilter, Types, UpdateQuery } from "mongoose";
+import { categoryTransactions } from './category.transaction';
 
-import { DatabaseRepository } from "./db.repository";
-import {
-  ICategory,
-  CategoryDocument,
-} from "../models/category/category.interface";
-import { CategoryModel } from "../models/category/category.model";
+import { DatabaseRepository } from './db.repository';
+import { ICategory, CategoryDocument } from '../models/category/category.interface';
+import { CategoryModel } from '../models/category/category.model';
 
 class CategoryRepository extends DatabaseRepository<ICategory> {
+  withHierarchyTransaction<T>(work: (session: ClientSession) => Promise<T>) {
+    return categoryTransactions.write(work);
+  }
+
+  withSnapshot<T>(work: (session: ClientSession) => Promise<T>) {
+    return categoryTransactions.read(work);
+  }
+
   constructor() {
     super(CategoryModel);
   }
 
   async findPublicCategories(
     filter: QueryFilter<ICategory>,
-    options: { page: number; limit: number; sortBy: "name" | "sortOrder" | "createdAt"; sortOrder: "asc" | "desc" },
+    options: {
+      page: number;
+      limit: number;
+      sortBy: 'name' | 'sortOrder' | 'createdAt';
+      sortOrder: 'asc' | 'desc';
+    },
+    session?: ClientSession,
   ) {
     const publicFilter = { ...filter, isActive: true };
-    const direction = options.sortOrder === "asc" ? 1 : -1;
-    const [categories, total] = await Promise.all([
-      this.model.find(publicFilter)
-        .sort({ [options.sortBy]: direction, _id: 1 })
-        .skip((options.page - 1) * options.limit)
-        .limit(options.limit).exec(),
-      this.model.countDocuments(publicFilter).exec(),
-    ]);
+    const direction = options.sortOrder === 'asc' ? 1 : -1;
+    const categories = await this.model
+      .find(publicFilter)
+      .sort({ [options.sortBy]: direction, _id: 1 })
+      .skip((options.page - 1) * options.limit)
+      .limit(options.limit)
+      .setOptions({ session: session ?? null })
+      .exec();
+    const total = await this.model
+      .countDocuments(publicFilter)
+      .setOptions({ session: session ?? null })
+      .exec();
     return {
       categories,
-      pagination: { page: options.page, limit: options.limit, total, totalPages: Math.ceil(total / options.limit) },
+      pagination: {
+        page: options.page,
+        limit: options.limit,
+        total,
+        totalPages: Math.ceil(total / options.limit),
+      },
     };
   }
 
@@ -37,8 +58,12 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async createCategory(
     data: Partial<ICategory>,
+    session?: ClientSession,
   ): Promise<CategoryDocument> {
-    return this.model.create(data);
+    const [category] = await this.model.create([data], {
+      session: session ?? null,
+    });
+    return category!;
   }
 
   /**
@@ -46,8 +71,12 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findCategoryById(
     id: Types.ObjectId,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
-    return this.model.findById(id).exec();
+    return this.model
+      .findById(id)
+      .setOptions({ session: session ?? null })
+      .exec();
   }
 
   /**
@@ -55,8 +84,12 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findCategoryBySlug(
     slug: string,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
-    return this.model.findOne({ slug, isActive: true }).exec();
+    return this.model
+      .findOne({ slug, isActive: true })
+      .setOptions({ session: session ?? null })
+      .exec();
   }
 
   /**
@@ -64,8 +97,12 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findCategories(
     filter: QueryFilter<ICategory> = {},
+    session?: ClientSession,
   ): Promise<CategoryDocument[]> {
-    return this.model.find(filter).exec();
+    return this.model
+      .find(filter)
+      .setOptions({ session: session ?? null })
+      .exec();
   }
 
   /**
@@ -73,30 +110,34 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findChildCategories(
     parentId: Types.ObjectId,
+    session?: ClientSession,
   ): Promise<CategoryDocument[]> {
     return this.model
       .find({ parent: parentId, isActive: true })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
   /**
    * Find root categories.
    */
-  async findRootCategories(): Promise<CategoryDocument[]> {
+  async findRootCategories(session?: ClientSession): Promise<CategoryDocument[]> {
     return this.model
       .find({ parent: { $exists: false }, isActive: true })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
   /**
    * Find active categories.
    */
-  async findActiveCategories(): Promise<CategoryDocument[]> {
+  async findActiveCategories(session?: ClientSession): Promise<CategoryDocument[]> {
     return this.model
       .find({ isActive: true })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
@@ -106,12 +147,14 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
   async updateCategory(
     filter: QueryFilter<ICategory>,
     update: UpdateQuery<ICategory>,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
     return this.model
       .findOneAndUpdate(filter, update, {
-        afterDocument: true,
+        returnDocument: 'after',
         runValidators: true,
       })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
@@ -120,18 +163,21 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async deleteCategory(
     id: Types.ObjectId,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
-    return this.model.findByIdAndDelete(id).exec();
+    return this.model
+      .findByIdAndDelete(id)
+      .setOptions({ session: session ?? null })
+      .exec();
   }
 
   /**
    * Check whether a category has children.
    */
-  async hasChildCategories(
-    parentId: Types.ObjectId,
-  ): Promise<boolean> {
+  async hasChildCategories(parentId: Types.ObjectId, session?: ClientSession): Promise<boolean> {
     const child = await this.model
       .exists({ parent: parentId })
+      .setOptions({ session: session ?? null })
       .exec();
 
     return Boolean(child);
@@ -144,12 +190,14 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findActiveCategoryById(
     id: Types.ObjectId,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
     return this.model
       .findOne({
         _id: id,
         isActive: true,
       })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
@@ -158,25 +206,28 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findActiveCategoryBySlug(
     slug: string,
+    session?: ClientSession,
   ): Promise<CategoryDocument | null> {
     return this.model
       .findOne({
         slug,
         isActive: true,
       })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
   /**
    * Find active root categories.
    */
-  async findActiveRootCategories(): Promise<CategoryDocument[]> {
+  async findActiveRootCategories(session?: ClientSession): Promise<CategoryDocument[]> {
     return this.model
       .find({
         isActive: true,
         parent: { $exists: false },
       })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
@@ -185,6 +236,7 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
    */
   async findActiveChildCategories(
     parentId: Types.ObjectId,
+    session?: ClientSession,
   ): Promise<CategoryDocument[]> {
     return this.model
       .find({
@@ -192,19 +244,20 @@ class CategoryRepository extends DatabaseRepository<ICategory> {
         isActive: true,
       })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
 
   /**
    * Retrieve all active categories.
    */
-  async findAllActiveCategories(): Promise<CategoryDocument[]> {
+  async findAllActiveCategories(session?: ClientSession): Promise<CategoryDocument[]> {
     return this.model
       .find({ isActive: true })
       .sort({ sortOrder: 1, name: 1 })
+      .setOptions({ session: session ?? null })
       .exec();
   }
-
 }
 
 export const categoryRepository = new CategoryRepository();

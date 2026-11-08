@@ -1,18 +1,14 @@
+import * as z from 'zod';
 
-import * as z from "zod";
-
-import {
-  generalFields,
-} from "../../Middlewares/validation.fields";
-import { GenderEnum } from "../../DB/models/user/user.interface";
-
+import { generalFields } from '../../Middlewares/validation.fields';
+import { GenderEnum } from '../../DB/models/user/user.interface';
 
 const phoneSchema = z
   .string()
   .trim()
-  .min(7, "Phone number must contain at least 7 characters")
-  .max(20, "Phone number cannot exceed 20 characters")
-  .regex(/^\+?[0-9\s\-()]+$/, "Invalid phone number format");
+  .min(7, 'Phone number must contain at least 7 characters')
+  .max(20, 'Phone number cannot exceed 20 characters')
+  .regex(/^\+?[0-9\s\-()]+$/, 'Invalid phone number format');
 
 // ============================================================================
 // 1. Login Schema
@@ -39,19 +35,17 @@ export const signupSchema = {
       confirmPassword: generalFields.confirmPassword,
     })
     .superRefine((data, ctx) => {
-
       // ----------------------------------------------------------------------
       // Password Confirmation
       // ----------------------------------------------------------------------
 
       if (data.password !== data.confirmPassword) {
         ctx.addIssue({
-          code: "custom",
-          message: "Passwords do not match",
-          path: ["confirmPassword"],
+          code: 'custom',
+          message: 'Passwords do not match',
+          path: ['confirmPassword'],
         });
       }
-
     }),
 };
 
@@ -76,14 +70,19 @@ export const resendConfirmEmailSchema = {
   }),
 };
 
-
 // ============================================================================
 // 5. Logout Current Device Schema
 // ============================================================================
 export const refreshTokenSchema = {
   cookies: z.object({
-    refreshToken: z.string().min(1).max(8192)
-      .regex(/^(user|admin) [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, "Invalid refresh cookie"),
+    refreshToken: z
+      .string()
+      .min(1)
+      .max(8192)
+      .regex(
+        /^(user|admin) [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
+        'Invalid refresh cookie',
+      ),
   }),
   body: z.strictObject({}).default({}),
 };
@@ -107,25 +106,22 @@ const updateProfileAddressSchema = z.strictObject({
 
 const updateProfileAddressArraySchema = z
   .array(updateProfileAddressSchema)
-  .max(20, "You cannot add more than 20 addresses")
+  .max(20, 'You cannot add more than 20 addresses')
   .superRefine((addresses, ctx) => {
-    const defaultAddressIndexes = addresses.reduce<number[]>(
-      (indexes, address, currentIndex) => {
-        if (address.isDefault) {
-          indexes.push(currentIndex);
-        }
+    const defaultAddressIndexes = addresses.reduce<number[]>((indexes, address, currentIndex) => {
+      if (address.isDefault) {
+        indexes.push(currentIndex);
+      }
 
-        return indexes;
-      },
-      []
-    );
+      return indexes;
+    }, []);
 
     if (defaultAddressIndexes.length > 1) {
       defaultAddressIndexes.slice(1).forEach((index) => {
         ctx.addIssue({
-          code: "custom",
-          message: "Only one address can be set as default",
-          path: [index, "isDefault"],
+          code: 'custom',
+          message: 'Only one address can be set as default',
+          path: [index, 'isDefault'],
         });
       });
     }
@@ -137,6 +133,7 @@ const updateProfileAddressArraySchema = z
 export const updateProfileSchema = {
   body: z
     .strictObject({
+      avatar: z.url().optional(),
       firstName: z.string().trim().min(2).max(30).optional(),
 
       lastName: z.string().trim().min(2).max(30).optional(),
@@ -148,7 +145,7 @@ export const updateProfileSchema = {
       address: updateProfileAddressArraySchema.optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
-      message: "At least one profile field must be provided",
+      message: 'At least one profile field must be provided',
     }),
 };
 
@@ -156,13 +153,15 @@ export const updateProfileSchema = {
 // Change Password Schema
 // ===========================================================================
 export const changePasswordSchema = {
-  body: z.strictObject({
-    currentPassword: generalFields.password,
-    newPassword: generalFields.password,
-  }).refine((data) => data.currentPassword !== data.newPassword, {
-    message: "New password must be different from current password",
-    path: ["newPassword"],
-  }),
+  body: z
+    .strictObject({
+      currentPassword: generalFields.password,
+      newPassword: generalFields.password,
+    })
+    .refine((data) => data.currentPassword !== data.newPassword, {
+      message: 'New password must be different from current password',
+      path: ['newPassword'],
+    }),
 };
 
 // ===========================================================================
@@ -173,7 +172,6 @@ export const forgotPasswordSchema = {
     email: generalFields.email,
   }),
 };
-
 
 // ===========================================================================
 // Reset Password Schema
@@ -187,7 +185,7 @@ export const resetPasswordSchema = {
       confirmPassword: generalFields.confirmPassword,
     })
     .refine((data) => data.newPassword === data.confirmPassword, {
-      message: "Passwords do not match",
-      path: ["confirmPassword"],
+      message: 'Passwords do not match',
+      path: ['confirmPassword'],
     }),
 };

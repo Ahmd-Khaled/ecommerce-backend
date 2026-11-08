@@ -1,5 +1,4 @@
-
-export type EmailEventName = "confirmEmail" | "resetPassword";
+export type EmailEventName = 'confirmEmail' | 'resetPassword';
 
 interface IEmailHtmlTemplate {
   event: EmailEventName;
@@ -12,11 +11,11 @@ interface IEmailHtmlTemplate {
 }
 
 const HTML_ENTITIES: Readonly<Record<string, string>> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
 };
 
 const escapeHtml = (value: string): string => {
@@ -29,7 +28,7 @@ export const emailHtmlTemplate = ({
   name,
   subject,
   expiresInMinutes = 10,
-  appName = "Your Store",
+  appName = 'Your Store',
   supportEmail,
 }: IEmailHtmlTemplate): string => {
   const safeCode = escapeHtml(code);
@@ -37,21 +36,26 @@ export const emailHtmlTemplate = ({
   const safeSubject = escapeHtml(subject);
   const safeAppName = escapeHtml(appName);
   const currentYear = new Date().getFullYear();
-  const content = event === "resetPassword"
-    ? {
-      preheader: "Use this code to reset your password. It expires after 10 minutes.",
-      instructions: "We received a request to reset your password. Enter the code below on the password reset page to choose a new password.",
-      codeLabel: "Your Password Reset Code",
-      expiration: `This password reset code expires after ${expiresInMinutes} minutes.`,
-      securityNotice: "If you didn't request a password reset, please ignore this email. Your password will remain unchanged.",
-    }
-    : {
-      preheader: "Confirm your email address using the verification code below.",
-      instructions: "To confirm your email address, enter the code below on the email confirmation page.",
-      codeLabel: "Your Email Confirmation Code",
-      expiration: `This email confirmation code expires after ${expiresInMinutes} minutes.`,
-      securityNotice: "If you didn't request email confirmation, you can safely ignore this email.",
-    };
+  const content =
+    event === 'resetPassword'
+      ? {
+          preheader: 'Use this code to reset your password. It expires after 10 minutes.',
+          instructions:
+            'We received a request to reset your password. Enter the code below on the password reset page to choose a new password.',
+          codeLabel: 'Your Password Reset Code',
+          expiration: `This password reset code expires after ${expiresInMinutes} minutes.`,
+          securityNotice:
+            "If you didn't request a password reset, please ignore this email. Your password will remain unchanged.",
+        }
+      : {
+          preheader: 'Confirm your email address using the verification code below.',
+          instructions:
+            'To confirm your email address, enter the code below on the email confirmation page.',
+          codeLabel: 'Your Email Confirmation Code',
+          expiration: `This email confirmation code expires after ${expiresInMinutes} minutes.`,
+          securityNotice:
+            "If you didn't request email confirmation, you can safely ignore this email.",
+        };
 
   return `
 <!DOCTYPE html>
@@ -294,8 +298,9 @@ export const emailHtmlTemplate = ({
                 <strong>${safeAppName}</strong>.
               </p>
 
-              ${supportEmail
-      ? `
+              ${
+                supportEmail
+                  ? `
                     <p style="
                       margin: 0 0 12px;
                       font-size: 12px;
@@ -310,8 +315,8 @@ export const emailHtmlTemplate = ({
                       </a>
                     </p>
                   `
-      : ""
-    }
+                  : ''
+              }
 
               <p style="
                 margin: 0;

@@ -1,4 +1,4 @@
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, Types } from 'mongoose';
 
 export interface ICartItem {
   product: Types.ObjectId;

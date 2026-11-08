@@ -1,19 +1,16 @@
+import { Types, type ClientSession, type QueryFilter, type UpdateQuery } from 'mongoose';
 
-import { Types, type QueryFilter, type UpdateQuery } from "mongoose";
+import { categoryRepository } from '../../DB/repository/category.repository';
+import { productRepository } from '../../DB/repository/product.repository';
 
-import { categoryRepository } from "../../DB/repository/category.repository";
-import { productRepository } from "../../DB/repository/product.repository";
+import { PublicCategoryListDTO, CreateCategoryDTO, UpdateCategoryDTO } from './category.dto';
 
+import { ICategory, CategoryDocument } from '../../DB/models/category/category.interface';
 import {
-  PublicCategoryListDTO,
-  CreateCategoryDTO,
-  UpdateCategoryDTO,
-} from "./category.dto";
-
-import { ICategory, CategoryDocument } from "../../DB/models/category/category.interface";
-import { BadRequestException, ConflictException, NotFoundException } from "../../Utils/response/error.response";
-
-
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '../../Utils/response/error.response';
 
 type CategoryTreeNode = {
   _id: Types.ObjectId;
@@ -30,31 +27,79 @@ type CategoryTreeNode = {
 };
 
 class CategoryService {
+  async createCategory(data: CreateCategoryDTO, createdBy: Types.ObjectId, id?: Types.ObjectId) {
+    try {
+      return await categoryRepository.withHierarchyTransaction((session) =>
+        this.createCategoryInSession(data, createdBy, session, id),
+      );
+    } catch (error) {
+      this.handleDuplicateSlugError(error);
+    }
+  }
+
+  async updateCategory(categoryId: string, data: UpdateCategoryDTO, expected?: { value: unknown }) {
+    try {
+      return await categoryRepository.withHierarchyTransaction((session) =>
+        this.updateCategoryInSession(categoryId, data, session, expected),
+      );
+    } catch (error) {
+      this.handleDuplicateSlugError(error);
+    }
+  }
+
+  async deleteCategory(categoryId: string) {
+    return categoryRepository.withHierarchyTransaction((session) =>
+      this.deleteCategoryInSession(categoryId, session),
+    );
+  }
+
+  async getCategoryBySlug(slug: string) {
+    return categoryRepository.withSnapshot((session) =>
+      this.getCategoryBySlugInSession(slug, session),
+    );
+  }
+
+  async getPublicCategories(query: PublicCategoryListDTO) {
+    return categoryRepository.withSnapshot((session) =>
+      this.getPublicCategoriesInSession(query, session),
+    );
+  }
+
+  async getCategoryTree(includeCounts = true): Promise<CategoryTreeNode[]> {
+    return categoryRepository.withSnapshot((session) =>
+      this.getCategoryTreeInSession(includeCounts, session),
+    );
+  }
+
   /**
    * Create a new category.
    */
-  async createCategory(
+  private async createCategoryInSession(
     data: CreateCategoryDTO,
     createdBy: Types.ObjectId,
+    session: ClientSession,
+    id?: Types.ObjectId,
   ) {
     const { parent, ...categoryData } = data;
 
     // Validate parent category if provided.
     if (parent) {
-      await this.validateParentCategory(
-        new Types.ObjectId(parent),
-      );
-      await this.validateCategoryHierarchy(undefined, new Types.ObjectId(parent));
+      await this.validateParentCategory(new Types.ObjectId(parent), session);
+      await this.validateCategoryHierarchy(undefined, new Types.ObjectId(parent), session);
     }
 
     try {
-      return await categoryRepository.createCategory({
-        ...this.getCategoryFields(categoryData),
-        ...(parent && {
-          parent: new Types.ObjectId(parent),
-        }),
-        createdBy,
-      });
+      return await categoryRepository.createCategory(
+        {
+          ...(id && { _id: id }),
+          ...this.getCategoryFields(categoryData),
+          ...(parent && {
+            parent: new Types.ObjectId(parent),
+          }),
+          createdBy,
+        },
+        session,
+      );
     } catch (error) {
       this.handleDuplicateSlugError(error);
     }
@@ -63,18 +108,18 @@ class CategoryService {
   /**
    * Get category by ID.
    */
-  async getCategoryById(categoryId: string, includeCounts = false) {
-    const category =
-      await categoryRepository.findCategoryById(
-        new Types.ObjectId(categoryId),
-      );
+  async getCategoryById(categoryId: string, includeCounts = false, session?: ClientSession) {
+    const category = await categoryRepository.findCategoryById(
+      new Types.ObjectId(categoryId),
+      session,
+    );
 
     if (!category) {
-      throw new NotFoundException("Category not found");
+      throw new NotFoundException('Category not found');
     }
 
     if (includeCounts) {
-      const [result] = await this.addProductCounts([category], false);
+      const [result] = await this.addProductCounts([category], false, undefined, session);
       return result!;
     }
     return category;
@@ -83,16 +128,15 @@ class CategoryService {
   /**
    * Get category by slug.
    */
-  async getCategoryBySlug(slug: string) {
-    const category =
-      await categoryRepository.findCategoryBySlug(slug);
+  private async getCategoryBySlugInSession(slug: string, session: ClientSession) {
+    const category = await categoryRepository.findCategoryBySlug(slug, session);
 
     if (!category) {
-      throw new NotFoundException("Category not found");
+      throw new NotFoundException('Category not found');
     }
 
-    await this.assertPublicCategory(category._id);
-    const [result] = await this.addProductCounts([category], true);
+    await this.assertPublicCategory(category._id, session);
+    const [result] = await this.addProductCounts([category], true, undefined, session);
     return result!;
   }
 
@@ -117,7 +161,7 @@ class CategoryService {
    * Get root categories.
    */
   async getRootCategories(query: PublicCategoryListDTO) {
-    return this.getPublicCategories({ ...query, parent: "root" });
+    return this.getPublicCategories({ ...query, parent: 'root' });
   }
 
   /**
@@ -127,21 +171,24 @@ class CategoryService {
     return this.getPublicCategories({ ...query, parent: parentId });
   }
 
-  async getPublicCategories(query: PublicCategoryListDTO) {
+  private async getPublicCategoriesInSession(query: PublicCategoryListDTO, session: ClientSession) {
     const filter: QueryFilter<ICategory> = {};
-    if (query.parent === "root") {
+    if (query.parent === 'root') {
       filter.parent = { $exists: false };
     } else if (query.parent) {
-      await this.assertPublicCategory(new Types.ObjectId(query.parent));
+      await this.assertPublicCategory(new Types.ObjectId(query.parent), session);
       filter.parent = new Types.ObjectId(query.parent);
     }
     if (query.slug) filter.slug = query.slug;
     if (query.search) {
       // Escape regex metacharacters so search is literal.
-      filter.name = { $regex: query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+      filter.name = {
+        $regex: query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        $options: 'i',
+      };
     }
     // Filter before pagination/counting so hidden descendants cannot leak in totals.
-    const tree = await this.getCategoryTree(false);
+    const tree = await this.getCategoryTreeInSession(false, session);
     const visibleIds: Types.ObjectId[] = [];
     const pending = [...tree];
     while (pending.length) {
@@ -150,32 +197,34 @@ class CategoryService {
       pending.push(...category.children);
     }
     filter._id = { $in: visibleIds };
-    const result = await categoryRepository.findPublicCategories(filter, query);
-    return { ...result, categories: await this.addProductCounts(result.categories, true) };
+    const result = await categoryRepository.findPublicCategories(filter, query, session);
+    return {
+      ...result,
+      categories: await this.addProductCounts(result.categories, true, undefined, session),
+    };
   }
 
   /**
    * Update category.
    */
-  async updateCategory(
+  private async updateCategoryInSession(
     categoryId: string,
     data: UpdateCategoryDTO,
+    session: ClientSession,
+    expected?: { value: unknown },
   ) {
-    const category =
-      await this.getCategoryById(categoryId);
+    const category = await this.getCategoryById(categoryId, false, session);
+
+    if (expected && data.image !== undefined && category.image !== expected.value)
+      throw new ConflictException('Image changed during upload; retry');
 
     const { parent, ...categoryData } = data;
 
     // Validate parent only when the parent field is provided.
     if (parent !== undefined && parent !== null) {
-      await this.validateParentCategory(
-        new Types.ObjectId(parent),
-      );
+      await this.validateParentCategory(new Types.ObjectId(parent), session);
 
-      await this.validateCategoryHierarchy(
-        category._id,
-        new Types.ObjectId(parent),
-      );
+      await this.validateCategoryHierarchy(category._id, new Types.ObjectId(parent), session);
     }
 
     // null means move category to root level.
@@ -195,13 +244,14 @@ class CategoryService {
       updatedCategory = await categoryRepository.updateCategory(
         { _id: category._id },
         updateData,
+        session,
       );
     } catch (error) {
       this.handleDuplicateSlugError(error);
     }
 
     if (!updatedCategory) {
-      throw new NotFoundException("Category not found");
+      throw new NotFoundException('Category not found');
     }
 
     return updatedCategory;
@@ -210,48 +260,36 @@ class CategoryService {
   /**
    * Delete category.
    */
-  async deleteCategory(categoryId: string) {
-    const category =
-      await this.getCategoryById(categoryId);
+  private async deleteCategoryInSession(categoryId: string, session: ClientSession) {
+    const category = await this.getCategoryById(categoryId, false, session);
 
-    const hasChildren =
-      await categoryRepository.hasChildCategories(
-        category._id,
-      );
+    const hasChildren = await categoryRepository.hasChildCategories(category._id, session);
 
     if (hasChildren) {
-      throw new BadRequestException(
-        "Cannot delete a category that has child categories",
-      );
+      throw new BadRequestException('Cannot delete a category that has child categories');
     }
 
-    const hasProducts = await productRepository.existsProduct({
-      category: category._id,
-    });
+    const hasProducts = await productRepository.existsProduct(
+      {
+        category: category._id,
+      },
+      session,
+    );
 
     if (hasProducts) {
-      throw new BadRequestException(
-        "Cannot delete a category that has assigned products",
-      );
+      throw new BadRequestException('Cannot delete a category that has assigned products');
     }
 
-    const deletedCategory =
-      await categoryRepository.deleteCategory(
-        category._id,
-      );
+    const deletedCategory = await categoryRepository.deleteCategory(category._id, session);
 
     if (!deletedCategory) {
-      throw new NotFoundException("Category not found");
+      throw new NotFoundException('Category not found');
     }
 
     return deletedCategory;
   }
 
   // ------------------------------------------------------------
-
-
-
-
 
   /**
    * Get the complete active category tree.
@@ -265,16 +303,20 @@ class CategoryService {
       if (category._id.toString() === id) return category;
       pending.push(...category.children);
     }
-    throw new NotFoundException("Category not found");
+    throw new NotFoundException('Category not found');
   }
 
   /** Get the complete active category tree. */
-  async getCategoryTree(includeCounts = true): Promise<CategoryTreeNode[]> {
-    const categories =
-      await categoryRepository.findAllActiveCategories();
+  private async getCategoryTreeInSession(
+    includeCounts: boolean,
+    session: ClientSession,
+  ): Promise<CategoryTreeNode[]> {
+    const categories = await categoryRepository.findAllActiveCategories(session);
 
     const categoryMap = new Map<string, CategoryTreeNode>();
-    const counts = includeCounts ? await this.getProductCountMap(true, categories) : new Map();
+    const counts = includeCounts
+      ? await this.getProductCountMap(true, categories, session)
+      : new Map();
 
     // First pass: create a node for every category.
     for (const category of categories) {
@@ -284,7 +326,9 @@ class CategoryService {
         _id: category._id,
         name: category.name,
         slug: category.slug,
-        ...(category.description !== undefined && { description: category.description }),
+        ...(category.description !== undefined && {
+          description: category.description,
+        }),
         ...(category.image !== undefined && { image: category.image }),
         isActive: category.isActive,
         sortOrder: category.sortOrder,
@@ -316,29 +360,21 @@ class CategoryService {
     return rootCategories;
   }
 
-
   // ------------------------------------------------------------
 
   /**
    * Validate that the parent category exists
    * and is not the category itself.
    */
-  private async validateParentCategory(
-    parentId: Types.ObjectId,
-  ) {
-    const parent =
-      await categoryRepository.findCategoryById(parentId);
+  private async validateParentCategory(parentId: Types.ObjectId, session: ClientSession) {
+    const parent = await categoryRepository.findCategoryById(parentId, session);
 
     if (!parent) {
-      throw new NotFoundException(
-        "Parent category not found",
-      );
+      throw new NotFoundException('Parent category not found');
     }
 
     if (!parent.isActive) {
-      throw new BadRequestException(
-        "Cannot assign an inactive parent category",
-      );
+      throw new BadRequestException('Cannot assign an inactive parent category');
     }
 
     return parent;
@@ -358,10 +394,9 @@ class CategoryService {
   private async validateCategoryHierarchy(
     categoryId: Types.ObjectId | undefined,
     newParentId: Types.ObjectId,
+    session: ClientSession,
   ) {
-    let currentParentId:
-      | Types.ObjectId
-      | undefined = newParentId;
+    let currentParentId: Types.ObjectId | undefined = newParentId;
 
     const visited = new Set<string>();
 
@@ -370,33 +405,24 @@ class CategoryService {
 
       // Prevent category from becoming its own parent.
       if (currentId === categoryId?.toString()) {
-        throw new BadRequestException(
-          "Cannot create a circular category hierarchy",
-        );
+        throw new BadRequestException('Cannot create a circular category hierarchy');
       }
 
       // Defensive protection against existing corrupted cycles.
       if (visited.has(currentId)) {
-        throw new BadRequestException(
-          "Invalid category hierarchy detected",
-        );
+        throw new BadRequestException('Invalid category hierarchy detected');
       }
 
       visited.add(currentId);
 
-      const currentCategory =
-        await categoryRepository.findCategoryById(
-          currentParentId,
-        );
+      const currentCategory = await categoryRepository.findCategoryById(currentParentId, session);
 
       if (!currentCategory) {
-        throw new NotFoundException(
-          "Parent category not found",
-        );
+        throw new NotFoundException('Parent category not found');
       }
 
       if (!currentCategory.isActive) {
-        throw new BadRequestException("Cannot assign an inactive parent category");
+        throw new BadRequestException('Cannot assign an inactive parent category');
       }
 
       currentParentId = currentCategory.parent;
@@ -404,37 +430,54 @@ class CategoryService {
   }
 
   /** Public lookups fail identically for missing, inactive or broken ancestry. */
-  private async assertPublicCategory(categoryId: Types.ObjectId) {
+  private async assertPublicCategory(categoryId: Types.ObjectId, session?: ClientSession) {
     let currentId: Types.ObjectId | undefined = categoryId;
     const visited = new Set<string>();
     while (currentId) {
       const id = currentId.toString();
-      if (visited.has(id)) throw new NotFoundException("Category not found");
+      if (visited.has(id)) throw new NotFoundException('Category not found');
       visited.add(id);
-      const category = await categoryRepository.findCategoryById(currentId);
+      const category = await categoryRepository.findCategoryById(currentId, session);
       if (!category || !category.isActive) {
-        throw new NotFoundException("Category not found");
+        throw new NotFoundException('Category not found');
       }
       currentId = category.parent;
     }
   }
 
-  private async addProductCounts(categories: CategoryDocument[], activeOnly: boolean, hierarchy?: CategoryDocument[]) {
-    const counts = await this.getProductCountMap(activeOnly, hierarchy);
-    return categories.map(category => ({
-      ...(typeof category.toObject === "function" ? category.toObject() : category),
+  private async addProductCounts(
+    categories: CategoryDocument[],
+    activeOnly: boolean,
+    hierarchy?: CategoryDocument[],
+    session?: ClientSession,
+  ) {
+    const counts = await this.getProductCountMap(activeOnly, hierarchy, session);
+    return categories.map((category) => ({
+      ...(typeof category.toObject === 'function' ? category.toObject() : category),
       productCount: counts.get(category._id.toString())?.productCount ?? 0,
       totalProductCount: counts.get(category._id.toString())?.totalProductCount ?? 0,
     }));
   }
 
-  private async getProductCountMap(activeOnly: boolean, hierarchy?: CategoryDocument[]) {
-    const [categories, grouped] = await Promise.all([
-      hierarchy ?? (activeOnly ? categoryRepository.findAllActiveCategories() : categoryRepository.findCategories()),
-      productRepository.countProductsByCategory(activeOnly),
-    ]);
-    const byId = new Map(categories.map(category => [category._id.toString(), category]));
-    const counts = new Map(categories.map(category => [category._id.toString(), { productCount: 0, totalProductCount: 0 }]));
+  private async getProductCountMap(
+    activeOnly: boolean,
+    hierarchy?: CategoryDocument[],
+    session?: ClientSession,
+  ) {
+    // Operations on a transaction session must run sequentially.
+    const categories =
+      hierarchy ??
+      (activeOnly
+        ? await categoryRepository.findAllActiveCategories(session)
+        : await categoryRepository.findCategories({}, session));
+    const grouped = await productRepository.countProductsByCategory(activeOnly, session);
+    const byId = new Map(categories.map((category) => [category._id.toString(), category]));
+    const counts = new Map(
+      categories.map((category) => [
+        category._id.toString(),
+        { productCount: 0, totalProductCount: 0 },
+      ]),
+    );
     for (const group of grouped) {
       if (!group._id) continue;
       const id = group._id.toString();
@@ -456,9 +499,7 @@ class CategoryService {
     return counts;
   }
 
-  private getCategoryFields(
-    data: Omit<UpdateCategoryDTO, "parent">,
-  ): Partial<ICategory> {
+  private getCategoryFields(data: Omit<UpdateCategoryDTO, 'parent'>): Partial<ICategory> {
     return {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.slug !== undefined && { slug: data.slug }),
@@ -472,18 +513,9 @@ class CategoryService {
   /**
    * Handle MongoDB duplicate slug errors.
    */
-  private handleDuplicateSlugError(
-    error: unknown,
-  ): never {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === 11000
-    ) {
-      throw new ConflictException(
-        "A category with this slug already exists",
-      );
+  private handleDuplicateSlugError(error: unknown): never {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+      throw new ConflictException('A category with this slug already exists');
     }
 
     throw error;

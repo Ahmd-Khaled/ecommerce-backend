@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit from 'express-rate-limit';
 
 const MINUTE = 60 * 1000;
 
@@ -7,11 +7,11 @@ const createLimiter = (limit: number, windowMs = 15 * MINUTE) =>
   rateLimit({
     windowMs,
     limit,
-    standardHeaders: "draft-8",
+    standardHeaders: 'draft-8',
     legacyHeaders: false,
     message: {
       status: false,
-      message: "Too many requests. Please try again later.",
+      message: 'Too many requests. Please try again later.',
     },
   });
 
@@ -33,15 +33,13 @@ export const cartLimiter = createLimiter(150);
 export const ordersLimiter = createLimiter(60);
 export const paymentsLimiter = createLimiter(30);
 
-
-
 export const resendEmailOTPLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 3,
-  standardHeaders: "draft-8",
+  standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: {
     status: false,
-    message: "Too many verification requests. Please try again later.",
+    message: 'Too many verification requests. Please try again later.',
   },
 });

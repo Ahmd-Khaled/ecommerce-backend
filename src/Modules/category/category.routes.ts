@@ -1,7 +1,8 @@
+import { Router } from 'express';
+import { uploadRoute, uploadLimiter } from '../../Middlewares/upload.middlewares';
+import { categoryUpload } from '../../Utils/storage/upload.policies';
 
-import { Router } from "express";
-
-import { categoryController } from "./category.controller";
+import { categoryController } from './category.controller';
 
 import {
   publicCategoryListSchema,
@@ -11,16 +12,14 @@ import {
   updateCategorySchema,
   categoryIdSchema,
   categorySlugSchema,
-} from "./category.validation";
+} from './category.validation';
 
-import { validations } from "../../Middlewares/validation.middlewares";
+import { validations } from '../../Middlewares/validation.middlewares';
 
-import {
-  authentication,
-} from "../../Middlewares/authentication.middlewares";
-import { TokenTypeEnum } from "../../Utils/security/token";
+import { authentication } from '../../Middlewares/authentication.middlewares';
+import { TokenTypeEnum } from '../../Utils/security/token';
 
-import { RoleEnum } from "../../DB/models/user/user.interface";
+import { RoleEnum } from '../../DB/models/user/user.interface';
 
 const router = Router();
 
@@ -29,50 +28,38 @@ const router = Router();
  */
 
 // GET /api/v1/categories/list
-router.get("/list", validations(publicCategoryListSchema), categoryController.getPublicCategories);
+router.get('/list', validations(publicCategoryListSchema), categoryController.getPublicCategories);
 
 // GET /api/v1/categories/active
 router.get(
-  "/active",
+  '/active',
   validations(publicCategoryListSchema),
   categoryController.getActiveCategories,
 );
 
 // GET /api/v1/categories/root
-router.get(
-  "/root",
-  validations(publicRootCategoriesSchema),
-  categoryController.getRootCategories,
-);
-
+router.get('/root', validations(publicRootCategoriesSchema), categoryController.getRootCategories);
 
 /**
  * GET /api/v1/categories/tree
  * Public.
  */
-router.get(
-  "/tree",
-  categoryController.getCategoryTree,
-);
+router.get('/tree', categoryController.getCategoryTree);
 
 // GET /api/v1/categories/slug/:slug
 // Keep the literal /slug prefix before the parameterized category routes.
-router.get(
-  "/slug/:slug",
-  validations(categorySlugSchema),
-  categoryController.getCategoryBySlug,
-);
+router.get('/slug/:slug', validations(categorySlugSchema), categoryController.getCategoryBySlug);
 
 // GET /api/v1/categories/:categoryId/children
 router.get(
-  "/:categoryId/children",
+  '/:categoryId/children',
   validations(publicChildCategoriesSchema),
   categoryController.getChildCategories,
 );
 
 // GET /api/v1/categories/:categoryId/tree
 router.get(
-  "/:categoryId/tree",
+  '/:categoryId/tree',
   validations(categoryIdSchema),
   categoryController.getCategoryTreeById,
 );
@@ -82,44 +69,29 @@ router.get(
  */
 
 // Apply authentication and admin authorization.
-router.use(
-  authentication(TokenTypeEnum.ACCESS, [RoleEnum.ADMIN]),
-);
+router.use(authentication(TokenTypeEnum.ACCESS, [RoleEnum.ADMIN]));
 
 // GET /api/v1/categories
-router.get(
-  "/",
-  categoryController.getCategories,
-);
+router.get('/', categoryController.getCategories);
 
 // GET /api/v1/categories/:categoryId
-router.get(
-  "/:categoryId",
-  validations(categoryIdSchema),
-  categoryController.getCategoryById,
-);
+router.get('/:categoryId', validations(categoryIdSchema), categoryController.getCategoryById);
 
 // POST /api/v1/categories
 router.post(
-  "/",
-  validations(createCategorySchema),
-  categoryController.createCategory,
+  '/',
+  uploadLimiter,
+  uploadRoute(categoryUpload, createCategorySchema, categoryController.createCategory),
 );
 
 // PATCH /api/v1/categories/:categoryId
 router.patch(
-  "/:categoryId",
-  validations(updateCategorySchema),
-  categoryController.updateCategory,
+  '/:categoryId',
+  uploadLimiter,
+  uploadRoute(categoryUpload, updateCategorySchema, categoryController.updateCategory),
 );
 
 // DELETE /api/v1/categories/:categoryId
-router.delete(
-  "/:categoryId",
-  validations(categoryIdSchema),
-  categoryController.deleteCategory,
-);
-
-
+router.delete('/:categoryId', validations(categoryIdSchema), categoryController.deleteCategory);
 
 export const categoryRouter = router;

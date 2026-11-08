@@ -1,5 +1,5 @@
-import { createTransport, type Transporter } from "nodemailer";
-import type Mail from "nodemailer/lib/mailer";
+import { createTransport, type Transporter } from 'nodemailer';
+import type Mail from 'nodemailer/lib/mailer';
 
 let transporter: Transporter | undefined;
 
@@ -12,11 +12,11 @@ const getTransporter = (): Transporter => {
   const password = process.env.NODEMAILER_EMAIL_PASSWORD;
 
   if (!email || !password) {
-    throw new Error("Nodemailer credentials are not configured");
+    throw new Error('Nodemailer credentials are not configured');
   }
 
   transporter = createTransport({
-    service: "gmail",
+    service: 'gmail',
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 20000,
@@ -33,7 +33,7 @@ export const sendEmail = async (data: Mail.Options) => {
   const email = process.env.NODEMAILER_EMAIL;
 
   if (!email) {
-    throw new Error("NODEMAILER_EMAIL is not configured");
+    throw new Error('NODEMAILER_EMAIL is not configured');
   }
 
   const info = await getTransporter().sendMail({
@@ -41,7 +41,7 @@ export const sendEmail = async (data: Mail.Options) => {
     from: `"E-Commerce" <${email}>`,
   });
 
-  console.log("Email sent: %s", info.messageId);
+  console.log('Email sent: %s', info.messageId);
 
   return info;
 };

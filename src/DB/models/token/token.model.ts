@@ -1,14 +1,6 @@
+import { model, models, Schema } from 'mongoose';
 
-import {
-  model,
-  models,
-  Schema,
-} from "mongoose";
-
-import type {
-  IToken,
-  TokenModelType,
-} from "./token.interface";
+import type { IToken, TokenModelType } from './token.interface';
 
 export const TokenSchema = new Schema<IToken>(
   {
@@ -28,15 +20,14 @@ export const TokenSchema = new Schema<IToken>(
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: "User",
+      ref: 'User',
       index: true,
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const TokenModel: TokenModelType =
-  (models.Token as TokenModelType | undefined) ??
-  model<IToken>("Token", TokenSchema);
+  (models.Token as TokenModelType | undefined) ?? model<IToken>('Token', TokenSchema);

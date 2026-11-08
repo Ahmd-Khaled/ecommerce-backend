@@ -1,13 +1,12 @@
-import type { RequestHandler } from "express";
-import { BadRequestException } from "../Utils/response/error.response";
-import type { ZodType } from "zod";
+import type { RequestHandler } from 'express';
+import { BadRequestException } from '../Utils/response/error.response';
+import type { ZodType } from 'zod';
 
-
-type KeyReqType = "body" | "params" | "query" | "headers" | "cookies";
+type KeyReqType = 'body' | 'params' | 'query' | 'headers' | 'cookies';
 type SchemaType = Partial<Record<KeyReqType, ZodType>>;
 type ValidationErrorType = Array<{
   key: KeyReqType;
-  issues: Array<{ message: string; path: (string | number | symbol)[] }>
+  issues: Array<{ message: string; path: (string | number | symbol)[] }>;
 }>;
 
 export const validations = (schema: SchemaType): RequestHandler => {
@@ -35,7 +34,9 @@ export const validations = (schema: SchemaType): RequestHandler => {
     }
 
     if (validationErrors.length > 0) {
-      throw new BadRequestException("Validation Error", { cause: validationErrors });
+      throw new BadRequestException('Validation Error', {
+        cause: validationErrors,
+      });
     }
 
     for (const key of Object.keys(parsedSections) as KeyReqType[]) {

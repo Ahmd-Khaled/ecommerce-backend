@@ -1,5 +1,4 @@
-
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, Types } from 'mongoose';
 
 export interface ICategory {
   name: string;

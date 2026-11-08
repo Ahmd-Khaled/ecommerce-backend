@@ -11,14 +11,20 @@ const { categoryRouter } = require('../dist/Modules/category/category.routes');
 const { globalErrorHandler } = require('../dist/Utils/response/error.response');
 const { CategoryModel } = require('../dist/DB/models/category/category.model');
 
+// Database-free tests exercise business rules; real transaction tests live separately.
+require('node:test').beforeEach(t => {
+  t.mock.method(repo, 'withHierarchyTransaction', async work => work(undefined));
+  t.mock.method(repo, 'withSnapshot', async work => work(undefined));
+});
+
 test('deletion child check includes inactive children', async t => {
   const parent = new Types.ObjectId();
   const exists = t.mock.method(CategoryModel, 'exists', filter => {
     assert.deepEqual(filter, { parent });
-    return { exec: async () => ({ _id: new Types.ObjectId() }) };
+    return { setOptions() { return this; }, session() { return this; }, exec: async () => ({ _id: new Types.ObjectId() }) };
   });
   assert.equal(await repo.hasChildCategories(parent), true);
-  exists.mock.mockImplementation(() => ({ exec: async () => null }));
+  exists.mock.mockImplementation(() => ({ setOptions() { return this; }, session() { return this; }, exec: async () => null }));
   assert.equal(await repo.hasChildCategories(parent), false);
 });
 
@@ -75,7 +81,7 @@ test('category deletion blocks assigned products of either status', async t => {
   let assignedProduct;
   t.mock.method(ProductModel, 'exists', filter => {
     assert.deepEqual(filter, { category: category._id });
-    return { exec: async () => assignedProduct ? { _id: assignedProduct._id } : null };
+    return { setOptions() { return this; }, session() { return this; }, exec: async () => assignedProduct ? { _id: assignedProduct._id } : null };
   });
   for (const isActive of [true, false]) {
     assignedProduct = { _id: new Types.ObjectId(), isActive };

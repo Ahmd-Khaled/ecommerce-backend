@@ -8,10 +8,10 @@ Checked items are implemented and covered by inspection and/or the category regr
 - [x] Implement category updating.
 - [x] Handle duplicate category slugs.
 - [x] Implement category deletion protection.
-- [ ] Ensure category deletion does not break product references.
+- [x] Ensure category deletion does not break product references.
 - [x] Ensure category deletion does not break parent-child relationships.
 
-Product-reference protection is blocked by the absent product model, repository, and reference field contract. Product service, routes and validation are empty. Once products exist, add an unfiltered reference-existence check through their repository before category deletion, including inactive products, and tests for referenced/unreferenced categories. No speculative product schema was introduced.
+Product-reference protection is implemented, including inactive products. Category writes and product category assignments use a shared hierarchy transaction guard; replica-set regression tests cover concurrency.
 
 ## 2. Category Hierarchy
 - [x] Implement parent and child category relationships.
@@ -94,5 +94,5 @@ Run `npm run test:category` (TypeScript build plus Node tests). Tests exercise H
 - `TODO.md`: record each supplied requirement, evidence and the outstanding product dependency.
 
 ## Remaining engineering limits
-- Hierarchy/deletion checks and writes are separate database operations, as in the existing design. Concurrent reparent/create/delete operations are not serialized. A future concurrency guarantee requires a coordinated write protocol across category and product mutations and database integration tests; current checks do not claim that guarantee.
-- Public lists load the active hierarchy to derive visible IDs, then query/count the visible subset. This favors consistency with the existing tree rules but may need database-side traversal for very large taxonomies. Separate reads do not provide snapshot isolation during concurrent changes.
+- Category hierarchy writes and product category assignments now serialize through a database guard inside transactions. See category.integration.test.cjs for concurrency coverage.
+- Public hierarchy reads use snapshot transactions. Loading the hierarchy may still need optimization for very large taxonomies.

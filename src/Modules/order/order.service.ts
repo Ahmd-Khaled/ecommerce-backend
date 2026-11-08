@@ -1,24 +1,62 @@
-import { Types } from "mongoose";
-import { orderRepository } from "../../DB/repository/order.repository";
-import type { CheckoutDTO } from "./order.dto";
-import { checkoutSchema } from "./order.validation";
-import { BadRequestException, ConflictException } from "../../Utils/response/error.response";
-
+import { Types } from 'mongoose';
+import { orderRepository } from '../../DB/repository/order.repository';
+import {
+  checkoutSchema,
+  idempotencyKeySchema,
+  orderIdSchema,
+  orderListSchema,
+  adminOrderListSchema,
+  cancelSchema,
+  transitionSchema,
+} from './order.validation';
+import { BadRequestException } from '../../Utils/response/error.response';
+import { z } from 'zod';
+function parse<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success)
+    throw new BadRequestException('Invalid order request', {
+      cause: result.error.issues,
+    });
+  return result.data;
+}
 class OrderService {
-  async checkout(user: Types.ObjectId, input: CheckoutDTO) {
-    const parsed = checkoutSchema.safeParse(input);
-    if (!parsed.success) throw new BadRequestException("Invalid checkout request");
-    try {
-      return await orderRepository.checkout(user, parsed.data);
-    } catch (error) {
-      // An unknown commit result must not be reported as safe to retry.
-      const failure = error as { hasErrorLabel?: (label: string) => boolean };
-      if (failure.hasErrorLabel?.("TransientTransactionError") &&
-          !failure.hasErrorLabel?.("UnknownTransactionCommitResult")) {
-        throw new ConflictException("Checkout conflicted with another update; refresh cart");
-      }
-      throw error;
-    }
+  async checkout(user: Types.ObjectId, input: unknown, key: unknown) {
+    return orderRepository.checkout(
+      user,
+      parse(checkoutSchema, input),
+      parse(idempotencyKeySchema, key),
+    );
+  }
+  async list(user: Types.ObjectId, input: unknown) {
+    return orderRepository.list(parse(orderListSchema, input), user);
+  }
+  async adminList(input: unknown) {
+    return orderRepository.list(parse(adminOrderListSchema, input));
+  }
+  async details(id: unknown, user?: Types.ObjectId) {
+    return orderRepository.details(parse(orderIdSchema, { orderId: id }).orderId, user);
+  }
+  async cancel(user: Types.ObjectId, id: unknown, input: unknown) {
+    const body = parse(cancelSchema, input);
+    return orderRepository.transition(
+      parse(orderIdSchema, { orderId: id }).orderId,
+      user,
+      false,
+      'cancelled',
+      undefined,
+      body.reason,
+    );
+  }
+  async transition(actor: Types.ObjectId, id: unknown, input: unknown) {
+    const body = parse(transitionSchema, input);
+    return orderRepository.transition(
+      parse(orderIdSchema, { orderId: id }).orderId,
+      actor,
+      true,
+      body.status,
+      body.expectedStatus,
+      body.reason,
+    );
   }
 }
 export const orderService = new OrderService();

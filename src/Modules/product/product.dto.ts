@@ -1,11 +1,11 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 import {
   createProductSchema,
   updateProductSchema,
   productIdSchema,
   productSlugSchema,
-} from "./product.validation";
+} from './product.validation';
 
 /**
  * Create product request body.
@@ -35,6 +35,6 @@ export interface GetProductsDTO {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
-  sortBy?: "createdAt" | "price" | "name";
-  sortOrder?: "asc" | "desc";
+  sortBy?: 'createdAt' | 'price' | 'name';
+  sortOrder?: 'asc' | 'desc';
 }

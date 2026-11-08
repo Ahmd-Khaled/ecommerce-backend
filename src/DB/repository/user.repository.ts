@@ -1,12 +1,9 @@
+import { Types } from 'mongoose';
 
-import { Types } from "mongoose";
+import { DatabaseRepository } from './db.repository';
 
-import { DatabaseRepository } from "./db.repository";
-
-
-
-import { UserModel } from "../models/user/user.model";
-import { HUserDocument, IUser, IUserVirtuals } from "../models/user/user.interface";
+import { UserModel } from '../models/user/user.model';
+import { HUserDocument, IUser, IUserVirtuals } from '../models/user/user.interface';
 
 // ============================================================================
 // User Repository
@@ -21,9 +18,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
   // Find user by email
   // --------------------------------------------------------------------------
 
-  async findByEmail(
-    email: string
-  ): Promise<HUserDocument | null> {
+  async findByEmail(email: string): Promise<HUserDocument | null> {
     return this.model
       .findOne({
         email: email.trim().toLowerCase(),
@@ -35,14 +30,12 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
   // Find user by email including password
   // --------------------------------------------------------------------------
 
-  async findByEmailWithPassword(
-    email: string
-  ): Promise<HUserDocument | null> {
+  async findByEmailWithPassword(email: string): Promise<HUserDocument | null> {
     return this.model
       .findOne({
         email: email.trim().toLowerCase(),
       })
-      .select("+password")
+      .select('+password')
       .exec() as Promise<HUserDocument | null>;
   }
 
@@ -50,41 +43,32 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
   // Find user by ID
   // --------------------------------------------------------------------------
 
-  async findUserById(
-    id: Types.ObjectId
-  ): Promise<HUserDocument | null> {
-    return this.model
-      .findById(id)
-      .exec() as Promise<HUserDocument | null>;
+  async findUserById(id: Types.ObjectId): Promise<HUserDocument | null> {
+    return this.model.findById(id).exec() as Promise<HUserDocument | null>;
   }
 
   // --------------------------------------------------------------------------
   // Create a new user
   // --------------------------------------------------------------------------
 
-  async createUser(
-    data: Partial<IUser>
-  ): Promise<HUserDocument> {
+  async createUser(data: Partial<IUser>): Promise<HUserDocument> {
     return this.model.create(data) as Promise<HUserDocument>;
   }
 
-
-  async findByEmailWithConfirmEmailOTP(
-    email: string
-  ): Promise<HUserDocument | null> {
+  async findByEmailWithConfirmEmailOTP(email: string): Promise<HUserDocument | null> {
     return this.model
       .findOne({
         email: email.trim().toLowerCase(),
       })
       .select(
         [
-          "+confirmEmailOTP",
-          "+confirmEmailOTPExpiresAt",
-          "+confirmEmailOTPAttempts",
-          "+confirmEmailOTPSentAt",
-          "+confirmEmailOTPResendCount",
-          "+confirmEmailOTPResendWindowStartedAt",
-        ].join(" ")
+          '+confirmEmailOTP',
+          '+confirmEmailOTPExpiresAt',
+          '+confirmEmailOTPAttempts',
+          '+confirmEmailOTPSentAt',
+          '+confirmEmailOTPResendCount',
+          '+confirmEmailOTPResendWindowStartedAt',
+        ].join(' '),
       )
       .exec() as Promise<HUserDocument | null>;
   }
@@ -96,7 +80,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
   async incrementConfirmEmailOTPAttempts(
     userId: Types.ObjectId,
     otpHash: string,
-    maxAttempts: number
+    maxAttempts: number,
   ): Promise<number | null> {
     const user = await this.model
       .findOneAndUpdate(
@@ -113,10 +97,10 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           },
         },
         {
-          returnDocument: "after",
-        }
+          returnDocument: 'after',
+        },
       )
-      .select("+confirmEmailOTPAttempts")
+      .select('+confirmEmailOTPAttempts')
       .exec();
 
     if (!user) return null;
@@ -136,7 +120,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
             confirmEmailOTP: 1,
             confirmEmailOTPExpiresAt: 1,
           },
-        }
+        },
       );
     }
 
@@ -149,33 +133,35 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
   async confirmUserEmail(
     userId: Types.ObjectId,
     otpHash: string,
-    maxAttempts: number
+    maxAttempts: number,
   ): Promise<boolean> {
-    const user = await this.model.findOneAndUpdate(
-      {
-        _id: userId,
-        confirmedAt: { $exists: false },
-        confirmEmailOTP: otpHash,
-        confirmEmailOTPExpiresAt: { $gt: new Date() },
-        confirmEmailOTPAttempts: { $lt: maxAttempts },
-      },
-      {
-        $set: {
-          confirmedAt: new Date(),
+    const user = await this.model
+      .findOneAndUpdate(
+        {
+          _id: userId,
+          confirmedAt: { $exists: false },
+          confirmEmailOTP: otpHash,
+          confirmEmailOTPExpiresAt: { $gt: new Date() },
+          confirmEmailOTPAttempts: { $lt: maxAttempts },
         },
-        $unset: {
-          confirmEmailOTP: 1,
-          confirmEmailOTPExpiresAt: 1,
-          confirmEmailOTPAttempts: 1,
-          confirmEmailOTPSentAt: 1,
-          confirmEmailOTPResendCount: 1,
-          confirmEmailOTPResendWindowStartedAt: 1,
+        {
+          $set: {
+            confirmedAt: new Date(),
+          },
+          $unset: {
+            confirmEmailOTP: 1,
+            confirmEmailOTPExpiresAt: 1,
+            confirmEmailOTPAttempts: 1,
+            confirmEmailOTPSentAt: 1,
+            confirmEmailOTPResendCount: 1,
+            confirmEmailOTPResendWindowStartedAt: 1,
+          },
         },
-      },
-      {
-        returnDocument: "after",
-      }
-    ).exec();
+        {
+          returnDocument: 'after',
+        },
+      )
+      .exec();
 
     return Boolean(user);
   }
@@ -210,64 +196,53 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
       resendCount,
     } = params;
 
-    const user = await this.model.findOneAndUpdate(
-      {
-        _id: userId,
-        confirmedAt: { $exists: false },
-        $expr: {
-          $and: [
-            {
-              $eq: [
-                { $ifNull: ["$confirmEmailOTPSentAt", null] },
-                previousSentAt ?? null,
-              ],
-            },
-            {
-              $eq: [
-                {
-                  $ifNull: [
-                    "$confirmEmailOTPResendWindowStartedAt",
-                    null,
-                  ],
-                },
-                previousWindowStartedAt ?? null,
-              ],
-            },
-            {
-              $eq: [
-                { $ifNull: ["$confirmEmailOTPResendCount", 0] },
-                previousResendCount,
-              ],
-            },
-          ],
+    const user = await this.model
+      .findOneAndUpdate(
+        {
+          _id: userId,
+          confirmedAt: { $exists: false },
+          $expr: {
+            $and: [
+              {
+                $eq: [{ $ifNull: ['$confirmEmailOTPSentAt', null] }, previousSentAt ?? null],
+              },
+              {
+                $eq: [
+                  {
+                    $ifNull: ['$confirmEmailOTPResendWindowStartedAt', null],
+                  },
+                  previousWindowStartedAt ?? null,
+                ],
+              },
+              {
+                $eq: [{ $ifNull: ['$confirmEmailOTPResendCount', 0] }, previousResendCount],
+              },
+            ],
+          },
         },
-      },
-      {
-        $set: {
-          confirmEmailOTP: otpHash,
-          confirmEmailOTPExpiresAt: expiresAt,
-          confirmEmailOTPAttempts: 0,
-          confirmEmailOTPSentAt: sentAt,
-          confirmEmailOTPResendWindowStartedAt: windowStartedAt,
-          confirmEmailOTPResendCount: resendCount,
+        {
+          $set: {
+            confirmEmailOTP: otpHash,
+            confirmEmailOTPExpiresAt: expiresAt,
+            confirmEmailOTPAttempts: 0,
+            confirmEmailOTPSentAt: sentAt,
+            confirmEmailOTPResendWindowStartedAt: windowStartedAt,
+            confirmEmailOTPResendCount: resendCount,
+          },
         },
-      },
-      {
-        returnDocument: "after",
-      }
-    ).exec();
+        {
+          returnDocument: 'after',
+        },
+      )
+      .exec();
 
     return Boolean(user);
   }
 
-
-
   /**
    * Increment the token version.
    */
-  async incrementTokenVersion(
-    userId: Types.ObjectId
-  ): Promise<HUserDocument | null> {
+  async incrementTokenVersion(userId: Types.ObjectId): Promise<HUserDocument | null> {
     return this.model
       .findByIdAndUpdate(
         userId,
@@ -277,21 +252,15 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           },
         },
         {
-          returnDocument: "after",
+          returnDocument: 'after',
           runValidators: true,
-        }
+        },
       )
       .exec() as Promise<HUserDocument | null>;
   }
 
-
-  async findUserByIdWithPassword(
-    userId: Types.ObjectId
-  ): Promise<HUserDocument | null> {
-    return this.model
-      .findById(userId)
-      .select("+password")
-      .exec() as Promise<HUserDocument | null>;
+  async findUserByIdWithPassword(userId: Types.ObjectId): Promise<HUserDocument | null> {
+    return this.model.findById(userId).select('+password').exec() as Promise<HUserDocument | null>;
   }
 
   async changePasswordAndInvalidateSessions(params: {
@@ -317,7 +286,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
         },
         {
           runValidators: true,
-        }
+        },
       )
       .exec();
 
@@ -332,13 +301,13 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
       })
       .select(
         [
-          "+password",
-          "+resetPasswordOTP",
-          "+resetPasswordOTPExpiresAt",
-          "+resetPasswordOTPSentAt",
-          "+resetPasswordOTPWindowStartedAt",
-          "+resetPasswordOTPResendCount",
-        ].join(" ")
+          '+password',
+          '+resetPasswordOTP',
+          '+resetPasswordOTPExpiresAt',
+          '+resetPasswordOTPSentAt',
+          '+resetPasswordOTPWindowStartedAt',
+          '+resetPasswordOTPResendCount',
+        ].join(' '),
       )
       .exec() as Promise<HUserDocument | null>;
   }
@@ -352,15 +321,8 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
     windowStartedAt: Date;
     resendCount: number;
   }): Promise<boolean> {
-    const {
-      userId,
-      expectedVersion,
-      otpHash,
-      expiresAt,
-      sentAt,
-      windowStartedAt,
-      resendCount,
-    } = params;
+    const { userId, expectedVersion, otpHash, expiresAt, sentAt, windowStartedAt, resendCount } =
+      params;
 
     const result = await this.model
       .updateOne(
@@ -383,7 +345,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
         },
         {
           runValidators: true,
-        }
+        },
       )
       .exec();
 
@@ -413,11 +375,12 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           },
         },
         {
-          returnDocument: "after",
+          returnDocument: 'after',
           projection: {
             resetPasswordOTPAttempts: 1,
           },
-        })
+        },
+      )
       .exec();
 
     if (!updatedUser) {
@@ -453,7 +416,7 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
           $inc: {
             __v: 1,
           },
-        }
+        },
       )
       .exec();
   }
@@ -493,16 +456,14 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
         },
         {
           runValidators: true,
-        }
+        },
       )
       .exec();
 
     return result.modifiedCount === 1;
   }
 
-  async findUserForPasswordResetWithPassword(
-    email: string
-  ): Promise<HUserDocument | null> {
+  async findUserForPasswordResetWithPassword(email: string): Promise<HUserDocument | null> {
     return this.model
       .findOne({
         email,
@@ -510,15 +471,14 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
       })
       .select(
         [
-          "+password",
-          "+resetPasswordOTP",
-          "+resetPasswordOTPExpiresAt",
-          "+resetPasswordOTPAttempts",
-        ].join(" ")
+          '+password',
+          '+resetPasswordOTP',
+          '+resetPasswordOTPExpiresAt',
+          '+resetPasswordOTPAttempts',
+        ].join(' '),
       )
       .exec() as Promise<HUserDocument | null>;
   }
-
 }
 
 // ============================================================================

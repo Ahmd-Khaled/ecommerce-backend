@@ -77,3 +77,7 @@ Express 5 propagates rejected async handlers to the error middleware. Applicatio
 
 To add an API, define its schema/DTO, service behavior, controller, and route; add repository methods when database access needs them. Add model fields only when data must persist. Write tests for behavior, including authorization and rejected inputs. If a service helper has no mounted route, it is not a callable API. See the module guides for concrete mappings.
 
+
+## Shared image upload lifecycle
+
+Authenticated profile, product, and category writes also accept multipart forms through shared upload middleware. Files are staged, form fields converted and validated, images decoded/re-encoded, and files finalized before the module service commits references. Public media delivery checks current record references; deferred reconciliation removes stale files. See [FILE_UPLOADS.md](FILE_UPLOADS.md) for the contract and storage consistency limits.

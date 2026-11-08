@@ -1,8 +1,8 @@
+import type { RequestHandler } from 'express';
+import { uploadId, uploadExpected } from '../../Middlewares/upload.middlewares';
 
-import type { RequestHandler } from "express";
-
-import { categoryService } from "./category.service";
-import { UnauthorizedException } from "../../Utils/response/error.response";
+import { categoryService } from './category.service';
+import { UnauthorizedException } from '../../Utils/response/error.response';
 
 import type {
   PublicCategoryListDTO,
@@ -10,7 +10,7 @@ import type {
   UpdateCategoryDTO,
   CategoryIdDTO,
   CategorySlugDTO,
-} from "./category.dto";
+} from './category.dto';
 
 class CategoryController {
   /** Get a public category and its complete visible subtree. */
@@ -18,7 +18,7 @@ class CategoryController {
     const category = await categoryService.getCategoryTreeById(req.params.categoryId);
     res.status(200).json({
       success: true,
-      message: "Category tree retrieved successfully",
+      message: 'Category tree retrieved successfully',
       data: { category },
     });
   };
@@ -29,7 +29,7 @@ class CategoryController {
    */
   createCategory: RequestHandler<{}, {}, CreateCategoryDTO> = async (req, res): Promise<void> => {
     if (!req.user) {
-      throw new UnauthorizedException("Missing authenticated user");
+      throw new UnauthorizedException('Missing authenticated user');
     }
 
     const createdBy = req.user._id;
@@ -37,11 +37,12 @@ class CategoryController {
     const category = await categoryService.createCategory(
       req.body,
       createdBy,
+      ...(uploadId(req) ? ([uploadId(req)!] as const) : []),
     );
 
     res.status(201).json({
       success: true,
-      message: "Category created successfully",
+      message: 'Category created successfully',
       data: { category },
     });
   };
@@ -51,12 +52,11 @@ class CategoryController {
    * Admin only.
    */
   getCategories: RequestHandler = async (req, res): Promise<void> => {
-    const categories =
-      await categoryService.getCategories();
+    const categories = await categoryService.getCategories();
 
     res.status(200).json({
       success: true,
-      message: "Categories retrieved successfully",
+      message: 'Categories retrieved successfully',
       data: { categories },
     });
   };
@@ -66,17 +66,24 @@ class CategoryController {
    * Public.
    */
   getPublicCategories: RequestHandler = async (req, res): Promise<void> => {
-    const data = await categoryService.getPublicCategories(req.query as unknown as PublicCategoryListDTO);
-    res.status(200).json({ success: true, message: "Categories retrieved successfully", data });
+    const data = await categoryService.getPublicCategories(
+      req.query as unknown as PublicCategoryListDTO,
+    );
+    res.status(200).json({
+      success: true,
+      message: 'Categories retrieved successfully',
+      data,
+    });
   };
 
   getActiveCategories: RequestHandler = async (req, res): Promise<void> => {
-    const data =
-      await categoryService.getActiveCategories(req.query as unknown as PublicCategoryListDTO);
+    const data = await categoryService.getActiveCategories(
+      req.query as unknown as PublicCategoryListDTO,
+    );
 
     res.status(200).json({
       success: true,
-      message: "Categories retrieved successfully",
+      message: 'Categories retrieved successfully',
       data,
     });
   };
@@ -86,12 +93,13 @@ class CategoryController {
    * Public.
    */
   getRootCategories: RequestHandler = async (req, res): Promise<void> => {
-    const data =
-      await categoryService.getRootCategories(req.query as unknown as PublicCategoryListDTO);
+    const data = await categoryService.getRootCategories(
+      req.query as unknown as PublicCategoryListDTO,
+    );
 
     res.status(200).json({
       success: true,
-      message: "Root categories retrieved successfully",
+      message: 'Root categories retrieved successfully',
       data,
     });
   };
@@ -103,12 +111,11 @@ class CategoryController {
   getCategoryById: RequestHandler<CategoryIdDTO> = async (req, res): Promise<void> => {
     const { categoryId } = req.params;
 
-    const category =
-      await categoryService.getCategoryById(categoryId, true);
+    const category = await categoryService.getCategoryById(categoryId, true);
 
     res.status(200).json({
       success: true,
-      message: "Category retrieved successfully",
+      message: 'Category retrieved successfully',
       data: { category },
     });
   };
@@ -120,12 +127,11 @@ class CategoryController {
   getCategoryBySlug: RequestHandler<CategorySlugDTO> = async (req, res): Promise<void> => {
     const { slug } = req.params;
 
-    const category =
-      await categoryService.getCategoryBySlug(slug);
+    const category = await categoryService.getCategoryBySlug(slug);
 
     res.status(200).json({
       success: true,
-      message: "Category retrieved successfully",
+      message: 'Category retrieved successfully',
       data: { category },
     });
   };
@@ -137,12 +143,14 @@ class CategoryController {
   getChildCategories: RequestHandler<CategoryIdDTO> = async (req, res): Promise<void> => {
     const { categoryId } = req.params;
 
-    const data =
-      await categoryService.getChildCategories(categoryId, req.query as unknown as PublicCategoryListDTO);
+    const data = await categoryService.getChildCategories(
+      categoryId,
+      req.query as unknown as PublicCategoryListDTO,
+    );
 
     res.status(200).json({
       success: true,
-      message: "Child categories retrieved successfully",
+      message: 'Child categories retrieved successfully',
       data,
     });
   };
@@ -151,18 +159,21 @@ class CategoryController {
    * Update a category.
    * Admin only.
    */
-  updateCategory: RequestHandler<CategoryIdDTO, {}, UpdateCategoryDTO> = async (req, res): Promise<void> => {
+  updateCategory: RequestHandler<CategoryIdDTO, {}, UpdateCategoryDTO> = async (
+    req,
+    res,
+  ): Promise<void> => {
     const { categoryId } = req.params;
 
-    const category =
-      await categoryService.updateCategory(
-        categoryId,
-        req.body,
-      );
+    const category = await categoryService.updateCategory(
+      categoryId,
+      req.body,
+      ...(uploadExpected(req) ? ([uploadExpected(req)!] as const) : []),
+    );
 
     res.status(200).json({
       success: true,
-      message: "Category updated successfully",
+      message: 'Category updated successfully',
       data: { category },
     });
   };
@@ -178,26 +189,23 @@ class CategoryController {
 
     res.status(200).json({
       success: true,
-      message: "Category deleted successfully",
+      message: 'Category deleted successfully',
     });
   };
-
 
   /**
    * Get the active category tree.
    * Public.
    */
   getCategoryTree: RequestHandler = async (req, res): Promise<void> => {
-    const categories =
-      await categoryService.getCategoryTree();
+    const categories = await categoryService.getCategoryTree();
 
     res.status(200).json({
       success: true,
-      message: "Category tree retrieved successfully",
+      message: 'Category tree retrieved successfully',
       data: { categories },
     });
   };
-
 }
 
 export const categoryController = new CategoryController();

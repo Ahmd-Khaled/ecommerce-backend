@@ -1,39 +1,34 @@
-import { Router } from "express";
+import { Router } from 'express';
 
-import { cartController } from "./cart.controller";
+import { cartController } from './cart.controller';
 
 import {
   addCartItemSchema,
   adjustCartItemSchema,
   updateCartItemSchema,
   cartProductIdSchema,
-} from "./cart.validation";
+} from './cart.validation';
 
-import { validations } from "../../Middlewares/validation.middlewares";
+import { validations } from '../../Middlewares/validation.middlewares';
 
-import { authentication } from "../../Middlewares/authentication.middlewares";
+import { authentication } from '../../Middlewares/authentication.middlewares';
 
-import { TokenTypeEnum } from "../../Utils/security/token";
-import { RoleEnum } from "../../DB/models/user/user.interface";
+import { TokenTypeEnum } from '../../Utils/security/token';
+import { RoleEnum } from '../../DB/models/user/user.interface';
 
 const router = Router();
 
 /**
  * Apply authentication to all Cart routes.
  */
-router.use(
-  authentication(TokenTypeEnum.ACCESS, [RoleEnum.USER]),
-);
+router.use(authentication(TokenTypeEnum.ACCESS, [RoleEnum.USER]));
 
 /**
  * GET /api/v1/cart
  *
  * Get the authenticated user's cart.
  */
-router.get(
-  "/",
-  cartController.getCart,
-);
+router.get('/', cartController.getCart);
 
 /**
  * POST /api/v1/cart/items
@@ -41,7 +36,7 @@ router.get(
  * Add a product to the cart.
  */
 router.post(
-  "/items",
+  '/items',
   validations({
     body: addCartItemSchema,
   }),
@@ -54,7 +49,7 @@ router.post(
  * Update a product's quantity.
  */
 router.patch(
-  "/items/:productId",
+  '/items/:productId',
   validations({
     params: cartProductIdSchema,
     body: updateCartItemSchema,
@@ -64,13 +59,13 @@ router.patch(
 
 /** Increase or decrease the current quantity (defaults to 1). */
 router.patch(
-  "/items/:productId/increase",
+  '/items/:productId/increase',
   validations({ params: cartProductIdSchema, body: adjustCartItemSchema }),
   cartController.increaseCartItem,
 );
 
 router.patch(
-  "/items/:productId/decrease",
+  '/items/:productId/decrease',
   validations({ params: cartProductIdSchema, body: adjustCartItemSchema }),
   cartController.decreaseCartItem,
 );
@@ -81,7 +76,7 @@ router.patch(
  * Remove a product from the cart.
  */
 router.delete(
-  "/items/:productId",
+  '/items/:productId',
   validations({
     params: cartProductIdSchema,
   }),
@@ -93,9 +88,6 @@ router.delete(
  *
  * Clear all items from the cart.
  */
-router.delete(
-  "/clear",
-  cartController.clearCart,
-);
+router.delete('/clear', cartController.clearCart);
 
 export const cartRouter = router;

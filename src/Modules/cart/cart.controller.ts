@@ -1,23 +1,37 @@
-import type { RequestHandler } from "express";
+import type { RequestHandler } from 'express';
 
-import { cartService } from "./cart.service";
+import { cartService } from './cart.service';
 
 import type {
   AddCartItemDTO,
   AdjustCartItemDTO,
   CartProductIdDTO,
   UpdateCartItemDTO,
-} from "./cart.dto";
+} from './cart.dto';
 
 class CartController {
-  increaseCartItem: RequestHandler<CartProductIdDTO, {}, AdjustCartItemDTO> = async (req, res): Promise<void> => {
+  increaseCartItem: RequestHandler<CartProductIdDTO, {}, AdjustCartItemDTO> = async (
+    req,
+    res,
+  ): Promise<void> => {
     const data = await cartService.increaseCartItem(req.user!._id, req.params.productId, req.body);
-    res.status(200).json({ success: true, message: "Cart item quantity increased successfully", data });
+    res.status(200).json({
+      success: true,
+      message: 'Cart item quantity increased successfully',
+      data,
+    });
   };
 
-  decreaseCartItem: RequestHandler<CartProductIdDTO, {}, AdjustCartItemDTO> = async (req, res): Promise<void> => {
+  decreaseCartItem: RequestHandler<CartProductIdDTO, {}, AdjustCartItemDTO> = async (
+    req,
+    res,
+  ): Promise<void> => {
     const data = await cartService.decreaseCartItem(req.user!._id, req.params.productId, req.body);
-    res.status(200).json({ success: true, message: "Cart item quantity decreased successfully", data });
+    res.status(200).json({
+      success: true,
+      message: 'Cart item quantity decreased successfully',
+      data,
+    });
   };
 
   /**
@@ -28,7 +42,7 @@ class CartController {
 
     res.status(200).json({
       success: true,
-      message: "Cart retrieved successfully",
+      message: 'Cart retrieved successfully',
       data,
     });
   };
@@ -36,19 +50,12 @@ class CartController {
   /**
    * Add a product to the cart.
    */
-  addCartItem: RequestHandler<
-    {},
-    {},
-    AddCartItemDTO
-  > = async (req, res): Promise<void> => {
-    const data = await cartService.addCartItem(
-      req.user!._id,
-      req.body,
-    );
+  addCartItem: RequestHandler<{}, {}, AddCartItemDTO> = async (req, res): Promise<void> => {
+    const data = await cartService.addCartItem(req.user!._id, req.body);
 
     res.status(200).json({
       success: true,
-      message: "Product added to cart successfully",
+      message: 'Product added to cart successfully',
       data,
     });
   };
@@ -56,22 +63,17 @@ class CartController {
   /**
    * Update a product's quantity in the cart.
    */
-  updateCartItem: RequestHandler<
-    CartProductIdDTO,
-    {},
-    UpdateCartItemDTO
-  > = async (req, res): Promise<void> => {
+  updateCartItem: RequestHandler<CartProductIdDTO, {}, UpdateCartItemDTO> = async (
+    req,
+    res,
+  ): Promise<void> => {
     const { productId } = req.params;
 
-    const data = await cartService.updateCartItem(
-      req.user!._id,
-      productId,
-      req.body,
-    );
+    const data = await cartService.updateCartItem(req.user!._id, productId, req.body);
 
     res.status(200).json({
       success: true,
-      message: "Cart item updated successfully",
+      message: 'Cart item updated successfully',
       data,
     });
   };
@@ -79,19 +81,14 @@ class CartController {
   /**
    * Remove a product from the cart.
    */
-  removeCartItem: RequestHandler<
-    CartProductIdDTO
-  > = async (req, res): Promise<void> => {
+  removeCartItem: RequestHandler<CartProductIdDTO> = async (req, res): Promise<void> => {
     const { productId } = req.params;
 
-    const data = await cartService.removeCartItem(
-      req.user!._id,
-      productId,
-    );
+    const data = await cartService.removeCartItem(req.user!._id, productId);
 
     res.status(200).json({
       success: true,
-      message: "Cart item removed successfully",
+      message: 'Cart item removed successfully',
       data,
     });
   };
@@ -99,17 +96,12 @@ class CartController {
   /**
    * Clear the authenticated user's cart.
    */
-  clearCart: RequestHandler = async (
-    req,
-    res,
-  ): Promise<void> => {
-    const data = await cartService.clearCart(
-      req.user!._id,
-    );
+  clearCart: RequestHandler = async (req, res): Promise<void> => {
+    const data = await cartService.clearCart(req.user!._id);
 
     res.status(200).json({
       success: true,
-      message: "Cart cleared successfully",
+      message: 'Cart cleared successfully',
       data,
     });
   };

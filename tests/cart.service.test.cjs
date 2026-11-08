@@ -94,7 +94,7 @@ for (const quantity of [undefined, 1, 2]) {
 test('decrease removes the last item even when stock is zero', async t => {
   const f = fixture(t, 1, 0);
   const result = await service.decreaseCartItem(f.user, f.id);
-  assert.deepEqual(result, { items: [], totalItems: 0, subtotal: 0, version: 0 });
+  assert.deepEqual(result, { items: [], totalItems: 0, subtotal: 0, subtotalMinor: 0, currency: 'EGP', currencyExponent: 2, version: 0 });
   assert.equal(f.save.mock.callCount(), 1);
 });
 

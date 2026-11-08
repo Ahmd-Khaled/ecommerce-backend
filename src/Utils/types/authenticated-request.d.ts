@@ -1,5 +1,5 @@
-import type { JwtPayload } from "jsonwebtoken";
-import type { HUserDocument } from "../../DB/models/user/user.interface";
+import type { JwtPayload } from 'jsonwebtoken';
+import type { HUserDocument } from '../../DB/models/user/user.interface';
 
 declare global {
   namespace Express {

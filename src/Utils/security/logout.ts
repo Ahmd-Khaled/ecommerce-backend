@@ -1,4 +1,4 @@
 export enum LogoutEnum {
-  ONLY = "only",
-  ALL = "all",
+  ONLY = 'only',
+  ALL = 'all',
 }

@@ -1,9 +1,4 @@
-
-import type {
-  HydratedDocument,
-  Model,
-  Types,
-} from "mongoose";
+import type { HydratedDocument, Model, Types } from 'mongoose';
 
 // ============================================================================
 // Token Interface
@@ -24,10 +19,4 @@ export interface IToken {
 
 export type HTokenDocument = HydratedDocument<IToken>;
 
-export type TokenModelType = Model<
-  IToken,
-  {},
-  {},
-  {},
-  HTokenDocument
->;
+export type TokenModelType = Model<IToken, {}, {}, {}, HTokenDocument>;

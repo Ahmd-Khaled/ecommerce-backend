@@ -1,42 +1,35 @@
+import { model, models, Schema } from 'mongoose';
 
-import {
-  model,
-  models,
-  Schema,
-} from "mongoose";
-
-import {
-  ICategory,
-} from "./category.interface";
+import { ICategory } from './category.interface';
 
 const categorySchema = new Schema<ICategory>(
   {
     name: {
       type: String,
-      required: [true, "Category name is required"],
+      required: [true, 'Category name is required'],
       trim: true,
-      minlength: [2, "Category name must be at least 2 characters"],
-      maxlength: [100, "Category name cannot exceed 100 characters"],
+      minlength: [2, 'Category name must be at least 2 characters'],
+      maxlength: [100, 'Category name cannot exceed 100 characters'],
     },
 
     slug: {
       type: String,
-      required: [true, "Category slug is required"],
+      required: [true, 'Category slug is required'],
       trim: true,
       lowercase: true,
       unique: true,
-      minlength: [2, "Category slug must be at least 2 characters"],
-      maxlength: [120, "Category slug cannot exceed 120 characters"],
+      minlength: [2, 'Category slug must be at least 2 characters'],
+      maxlength: [120, 'Category slug cannot exceed 120 characters'],
       match: [
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-        "Slug must contain lowercase letters, numbers, and hyphens only",
+        'Slug must contain lowercase letters, numbers, and hyphens only',
       ],
     },
 
     description: {
       type: String,
       trim: true,
-      maxlength: [1000, "Description cannot exceed 1000 characters"],
+      maxlength: [1000, 'Description cannot exceed 1000 characters'],
     },
 
     image: {
@@ -46,7 +39,7 @@ const categorySchema = new Schema<ICategory>(
 
     parent: {
       type: Schema.Types.ObjectId,
-      ref: "Category",
+      ref: 'Category',
       default: undefined,
     },
 
@@ -58,13 +51,13 @@ const categorySchema = new Schema<ICategory>(
     sortOrder: {
       type: Number,
       default: 0,
-      min: [0, "Sort order cannot be negative"],
+      min: [0, 'Sort order cannot be negative'],
     },
 
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Category creator is required"],
+      ref: 'User',
+      required: [true, 'Category creator is required'],
     },
   },
   {
@@ -77,6 +70,4 @@ const categorySchema = new Schema<ICategory>(
 categorySchema.index({ parent: 1, sortOrder: 1 });
 categorySchema.index({ isActive: 1, sortOrder: 1 });
 
-export const CategoryModel =
-  models.Category ||
-  model<ICategory>("Category", categorySchema);
+export const CategoryModel = models.Category || model<ICategory>('Category', categorySchema);

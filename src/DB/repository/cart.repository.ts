@@ -1,34 +1,29 @@
-import { Types } from "mongoose";
+import { Types } from 'mongoose';
 
-import { DatabaseRepository } from "./db.repository";
+import { DatabaseRepository } from './db.repository';
 
-import { CartModel } from "../models/cart/cart.model";
+import { CartModel } from '../models/cart/cart.model';
 
-import type {
-  CartDocument,
-  ICart,
-} from "../models/cart/cart.interface";
+import type { CartDocument, ICart } from '../models/cart/cart.interface';
 
 class CartRepository extends DatabaseRepository<ICart> {
   constructor() {
     super(CartModel);
   }
 
-  async findCartByUser(
-    userId: Types.ObjectId,
-  ): Promise<CartDocument | null> {
+  async findCartByUser(userId: Types.ObjectId): Promise<CartDocument | null> {
     return this.model.findOne({ user: userId }).exec();
   }
 
-  async createCart(
-    userId: Types.ObjectId,
-  ): Promise<CartDocument> {
+  async createCart(userId: Types.ObjectId): Promise<CartDocument> {
     try {
-      return await this.model.findOneAndUpdate(
-        { user: userId },
-        { $setOnInsert: { user: userId, items: [], __v: 0 } },
-        { upsert: true, returnDocument: "after", runValidators: true },
-      ).exec() as CartDocument;
+      return (await this.model
+        .findOneAndUpdate(
+          { user: userId },
+          { $setOnInsert: { user: userId, items: [], __v: 0 } },
+          { upsert: true, returnDocument: 'after', runValidators: true },
+        )
+        .exec()) as CartDocument;
     } catch (error) {
       // Another request may win the unique user index race.
       if ((error as { code?: number }).code !== 11000) throw error;
@@ -38,9 +33,7 @@ class CartRepository extends DatabaseRepository<ICart> {
     }
   }
 
-  async deleteCartByUser(
-    userId: Types.ObjectId,
-  ) {
+  async deleteCartByUser(userId: Types.ObjectId) {
     return this.model.deleteOne({ user: userId }).exec();
   }
 }

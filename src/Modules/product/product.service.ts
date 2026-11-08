@@ -1,45 +1,59 @@
-import { Types, type QueryFilter } from "mongoose";
+import { Types, type ClientSession, type QueryFilter } from 'mongoose';
+import { toMinor } from '../../Utils/money';
 
-import { productRepository } from "../../DB/repository/product.repository";
-import { categoryRepository } from "../../DB/repository/category.repository";
+import { productRepository } from '../../DB/repository/product.repository';
+import { categoryRepository } from '../../DB/repository/category.repository';
 
-import type { IProduct } from "../../DB/models/product/product.interface";
+import type { IProduct } from '../../DB/models/product/product.interface';
 
-import type {
-  CreateProductDTO,
-  UpdateProductDTO,
-  GetProductsDTO,
-} from "./product.dto";
+import type { CreateProductDTO, UpdateProductDTO, GetProductsDTO } from './product.dto';
 
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-} from "../../Utils/response/error.response";
+} from '../../Utils/response/error.response';
 
 class ProductService {
+  async createProduct(data: CreateProductDTO, createdBy: Types.ObjectId, id?: Types.ObjectId) {
+    return categoryRepository.withHierarchyTransaction((session) =>
+      this.createProductInSession(data, createdBy, session, id),
+    );
+  }
+
+  async updateProduct(productId: string, data: UpdateProductDTO, expected?: { value: unknown }) {
+    // Category assignments must serialize with category deletion.
+    if (data.category !== undefined) {
+      return categoryRepository.withHierarchyTransaction((session) =>
+        this.updateProductInSession(productId, data, session, expected),
+      );
+    }
+    return this.updateProductInSession(productId, data, undefined, expected);
+  }
+
   /** Create a product in an active category. */
-  async createProduct(
+  private async createProductInSession(
     data: CreateProductDTO,
     createdBy: Types.ObjectId,
+    session: ClientSession,
+    id?: Types.ObjectId,
   ) {
-    await this.validateActiveCategory(data.category);
+    await this.validateActiveCategory(data.category, session);
 
-    if (
-      data.compareAtPrice !== undefined &&
-      data.compareAtPrice <= data.price
-    ) {
-      throw new BadRequestException(
-        "Compare-at price must be greater than the current price",
-      );
+    if (data.compareAtPrice !== undefined && data.compareAtPrice <= data.price) {
+      throw new BadRequestException('Compare-at price must be greater than the current price');
     }
 
     try {
-      return await productRepository.createProduct({
-        ...this.getProductFields(data),
-        category: new Types.ObjectId(data.category),
-        createdBy,
-      });
+      return await productRepository.createProduct(
+        {
+          ...(id && { _id: id }),
+          ...this.getProductFields(data),
+          category: new Types.ObjectId(data.category),
+          createdBy,
+        },
+        session,
+      );
     } catch (error) {
       this.handleDuplicateKeyError(error);
     }
@@ -55,7 +69,7 @@ class ProductService {
     const product = await this.getProductOrThrow(productId);
 
     if (!product.isActive) {
-      throw new NotFoundException("Product not found");
+      throw new NotFoundException('Product not found');
     }
 
     return product;
@@ -66,7 +80,7 @@ class ProductService {
     const product = await productRepository.findProductBySlug(slug);
 
     if (!product || !product.isActive) {
-      throw new NotFoundException("Product not found");
+      throw new NotFoundException('Product not found');
     }
 
     return product;
@@ -77,7 +91,7 @@ class ProductService {
     const product = await productRepository.findProductBySKU(sku);
 
     if (!product) {
-      throw new NotFoundException("Product not found");
+      throw new NotFoundException('Product not found');
     }
 
     return product;
@@ -101,28 +115,20 @@ class ProductService {
       category,
       minPrice,
       maxPrice,
-      sortBy = "createdAt",
-      sortOrder = "desc",
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
     } = query;
 
     if (!Number.isInteger(page) || page < 1) {
-      throw new BadRequestException("Page must be a positive integer");
+      throw new BadRequestException('Page must be a positive integer');
     }
 
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-      throw new BadRequestException(
-        "Limit must be an integer between 1 and 100",
-      );
+      throw new BadRequestException('Limit must be an integer between 1 and 100');
     }
 
-    if (
-      minPrice !== undefined &&
-      maxPrice !== undefined &&
-      minPrice > maxPrice
-    ) {
-      throw new BadRequestException(
-        "Minimum price cannot be greater than maximum price",
-      );
+    if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+      throw new BadRequestException('Minimum price cannot be greater than maximum price');
     }
 
     const filter: QueryFilter<IProduct> = activeOnly ? { isActive: true } : {};
@@ -146,20 +152,18 @@ class ProductService {
     }
 
     if (search?.trim()) {
-      const escapedSearch = search
-        .trim()
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       filter.$or = [
-        { name: { $regex: escapedSearch, $options: "i" } },
-        { description: { $regex: escapedSearch, $options: "i" } },
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { description: { $regex: escapedSearch, $options: 'i' } },
       ];
     }
 
     const skip = (page - 1) * limit;
 
     const sort: Record<string, 1 | -1> = {
-      [sortBy]: sortOrder === "asc" ? 1 : -1,
+      [sortBy]: sortOrder === 'asc' ? 1 : -1,
     };
 
     const [products, total] = await Promise.all([
@@ -185,10 +189,7 @@ class ProductService {
   }
 
   /** Get active products in a category. */
-  async getProductsByCategory(
-    categoryId: string,
-    query: Omit<GetProductsDTO, "category">,
-  ) {
+  async getProductsByCategory(categoryId: string, query: Omit<GetProductsDTO, 'category'>) {
     return this.getProducts({
       ...query,
       category: categoryId,
@@ -196,14 +197,16 @@ class ProductService {
   }
 
   /** Update supplied fields and validate the resulting prices. */
-  async updateProduct(
+  private async updateProductInSession(
     productId: string,
     data: UpdateProductDTO,
+    session?: ClientSession,
+    expected?: { value: unknown },
   ) {
-    const existingProduct = await this.getProductOrThrow(productId);
+    const existingProduct = await this.getProductOrThrow(productId, session);
 
     if (data.category !== undefined) {
-      await this.validateActiveCategory(data.category);
+      await this.validateActiveCategory(data.category, session);
     }
 
     const nextPrice = data.price ?? existingProduct.price;
@@ -211,15 +214,10 @@ class ProductService {
     const nextCompareAtPrice =
       data.compareAtPrice === null
         ? undefined
-        : data.compareAtPrice ?? existingProduct.compareAtPrice;
+        : (data.compareAtPrice ?? existingProduct.compareAtPrice);
 
-    if (
-      nextCompareAtPrice !== undefined &&
-      nextCompareAtPrice <= nextPrice
-    ) {
-      throw new BadRequestException(
-        "Compare-at price must be greater than the current price",
-      );
+    if (nextCompareAtPrice !== undefined && nextCompareAtPrice <= nextPrice) {
+      throw new BadRequestException('Compare-at price must be greater than the current price');
     }
 
     const { compareAtPrice, category } = data;
@@ -243,10 +241,14 @@ class ProductService {
       const updatedProduct = await productRepository.updateProduct(
         new Types.ObjectId(productId),
         update,
+        session,
+        data.images !== undefined ? expected : undefined,
       );
 
       if (!updatedProduct) {
-        throw new NotFoundException("Product not found");
+        if (expected && data.images !== undefined)
+          throw new ConflictException('Images changed during upload; retry');
+        throw new NotFoundException('Product not found');
       }
 
       return updatedProduct;
@@ -259,18 +261,16 @@ class ProductService {
   async deleteProduct(productId: string) {
     const product = await this.getProductOrThrow(productId);
 
-    // Later, before deleting a product, check whether it is referenced
-    // by existing orders. Products in historical orders should usually
-    // be deactivated instead of permanently deleted.
+    // Archive instead of destroying inventory referenced by historical orders.
 
     const deletedProduct = await productRepository.deleteProduct(product._id);
 
     if (!deletedProduct) {
-      throw new NotFoundException("Product not found");
+      throw new NotFoundException('Product not found');
     }
 
     return {
-      message: "Product deleted successfully",
+      message: 'Product archived successfully',
     };
   }
   // --------------------------------------------------------------------------
@@ -279,6 +279,12 @@ class ProductService {
 
   /** Map only supplied, editable fields to the persistence model. */
   private getProductFields(data: UpdateProductDTO): Partial<IProduct> {
+    if (data.price !== undefined) toMinor(data.price);
+    if (data.compareAtPrice !== undefined && data.compareAtPrice !== null)
+      toMinor(data.compareAtPrice);
+    if (data.stock !== undefined && (!Number.isSafeInteger(data.stock) || data.stock < 0)) {
+      throw new BadRequestException('Stock must be a nonnegative safe integer');
+    }
     return {
       ...(data.name !== undefined && { name: data.name }),
       ...(data.slug !== undefined && { slug: data.slug }),
@@ -288,70 +294,58 @@ class ProductService {
       ...(data.stock !== undefined && { stock: data.stock }),
       ...(data.images !== undefined && { images: data.images }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
-      ...(data.compareAtPrice !== undefined && data.compareAtPrice !== null && {
-        compareAtPrice: data.compareAtPrice,
-      }),
+      ...(data.compareAtPrice !== undefined &&
+        data.compareAtPrice !== null && {
+          compareAtPrice: data.compareAtPrice,
+        }),
     };
   }
 
-  private async validateActiveCategory(categoryId: string) {
+  private async validateActiveCategory(categoryId: string, session?: ClientSession) {
     if (!Types.ObjectId.isValid(categoryId)) {
-      throw new BadRequestException("Invalid category ID");
+      throw new BadRequestException('Invalid category ID');
     }
 
     const category = await categoryRepository.findActiveCategoryById(
       new Types.ObjectId(categoryId),
+      session,
     );
 
     if (!category) {
-      throw new NotFoundException("Category not found");
+      throw new NotFoundException('Category not found');
     }
 
     return category;
   }
 
-  private async getProductOrThrow(productId: string) {
+  private async getProductOrThrow(productId: string, session?: ClientSession) {
     if (!Types.ObjectId.isValid(productId)) {
-      throw new BadRequestException("Invalid product ID");
+      throw new BadRequestException('Invalid product ID');
     }
 
-    const product = await productRepository.findProductById(
-      new Types.ObjectId(productId),
-    );
+    const product = await productRepository.findProductById(new Types.ObjectId(productId), session);
 
     if (!product) {
-      throw new NotFoundException("Product not found");
+      throw new NotFoundException('Product not found');
     }
 
     return product;
   }
 
   private isDuplicateKeyError(error: unknown): boolean {
-    return (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === 11000
-    );
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === 11000;
   }
 
   private getDuplicateField(error: unknown): string | undefined {
-    if (
-      typeof error !== "object" ||
-      error === null ||
-      !("keyPattern" in error)
-    ) {
+    if (typeof error !== 'object' || error === null || !('keyPattern' in error)) {
       return undefined;
     }
 
     const keyPattern = error.keyPattern;
 
-    if (
-      typeof keyPattern === "object" &&
-      keyPattern !== null
-    ) {
-      if ("slug" in keyPattern) return "slug";
-      if ("sku" in keyPattern) return "sku";
+    if (typeof keyPattern === 'object' && keyPattern !== null) {
+      if ('slug' in keyPattern) return 'slug';
+      if ('sku' in keyPattern) return 'sku';
     }
 
     return undefined;
@@ -364,17 +358,16 @@ class ProductService {
 
     const field = this.getDuplicateField(error);
 
-    if (field === "slug") {
-      throw new ConflictException("Product slug already exists");
+    if (field === 'slug') {
+      throw new ConflictException('Product slug already exists');
     }
 
-    if (field === "sku") {
-      throw new ConflictException("Product SKU already exists");
+    if (field === 'sku') {
+      throw new ConflictException('Product SKU already exists');
     }
 
-    throw new ConflictException("A product with these values already exists");
+    throw new ConflictException('A product with these values already exists');
   }
-
 }
 
 export const productService = new ProductService();

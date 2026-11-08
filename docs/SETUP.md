@@ -96,3 +96,24 @@ A 404 may mean an unmatched route, an inactive/missing product, a hidden categor
 
 For startup failures, check dependency availability and configuration before inspecting controllers. For unexpected data, identify the repository method actually called and whether it uses document save, query updates, or a transaction. These paths have different hooks and concurrency behavior.
 
+
+## Order configuration and rollout
+
+STORE_CURRENCY defaults to EGP; STORE_CURRENCY_EXPONENT defaults to 2 (allowed 0–6). Confirm these match the actual catalog denomination. Shipping, discount, and tax are zero until separate pricing rules are introduced. Startup validates configuration and ensures order indexes exist; MongoDB replica-set/sharded transaction support is required.
+
+Read-only data preflight in PowerShell:
+
+```powershell
+$env:STORE_CURRENCY='EGP'
+$env:STORE_CURRENCY_EXPONENT='2'
+$env:MONGO_AUDIT_URI='mongodb://localhost:27017/your_database?replicaSet=rs0'
+npm run audit:orders
+```
+
+Use the intended database explicitly. Resolve reported invalid products/duplicate checkout keys before rollout; review legacy orders manually. The command does not migrate records or establish their historical currency.
+
+For transaction tests, set MONGO_TEST_URI to a disposable replica set and run npm test. Suites create/drop uniquely named test databases. See [ORDER.md](ORDER.md) for the breaking checkout contract and client rollout steps.
+
+## Local upload storage
+
+Configure `STORAGE_ROOT` as a persistent application-owned directory and `STORAGE_PUBLIC_URL` as the externally reachable URL ending in `/media`. Use Node.js 22.12+ (tested on 24.21.0). See [FILE_UPLOADS.md](FILE_UPLOADS.md) for all upload limits, request examples, backup requirements, and the single-process-per-storage-root deployment constraint. Run `npm run test:upload` to verify the upload pipeline.

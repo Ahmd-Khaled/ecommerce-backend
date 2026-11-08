@@ -6,8 +6,14 @@ const { categoryRepository: categories } = require('../dist/DB/repository/catego
 const { productRepository: products } = require('../dist/DB/repository/product.repository');
 const { ProductModel } = require('../dist/DB/models/product/product.model');
 
+// Database-free tests exercise business rules; real transaction tests live separately.
+require('node:test').beforeEach(t => {
+  t.mock.method(categories, 'withHierarchyTransaction', async work => work(undefined));
+  t.mock.method(categories, 'withSnapshot', async work => work(undefined));
+});
+
 test('category product aggregation filters active products only for public counts', async t => {
-  const aggregate = t.mock.method(ProductModel, 'aggregate', pipeline => ({ exec: async () => pipeline }));
+  const aggregate = t.mock.method(ProductModel, 'aggregate', pipeline => ({ setOptions() { return this; }, session() { return this; }, exec: async () => pipeline }));
   for (const activeOnly of [true, false]) {
     const pipeline = await products.countProductsByCategory(activeOnly);
     assert.deepEqual(pipeline, [

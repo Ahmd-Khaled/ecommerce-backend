@@ -1,15 +1,14 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from 'express';
 
 export interface IError extends Error {
   statusCode: number;
 }
 
 export class ApplicationException extends Error {
-
   constructor(
     message: string,
     public statusCode: number = 400,
-    options?: ErrorOptions
+    options?: ErrorOptions,
   ) {
     super(message, options);
     this.name = this.constructor.name;
@@ -43,11 +42,15 @@ export class ForbiddenException extends ApplicationException {
   }
 }
 
-
-export const globalErrorHandler = (err: IError, req: Request, res: Response, next: NextFunction) => {
+export const globalErrorHandler = (
+  err: IError,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   return res.status(err.statusCode || 500).json({
-    message: err.message || "Something went wrong",
-    stack: process.env.MODE === "DEV" ? err.stack : undefined,
-    cause: process.env.MODE === "DEV" ? err.cause : undefined
+    message: err.message || 'Something went wrong',
+    stack: process.env.MODE === 'DEV' ? err.stack : undefined,
+    cause: process.env.MODE === 'DEV' ? err.cause : undefined,
   });
-} 
+};

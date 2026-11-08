@@ -7,6 +7,12 @@ const { productRepository } = require('../dist/DB/repository/product.repository'
 const { categoryRouter } = require('../dist/Modules/category/category.routes');
 const { globalErrorHandler } = require('../dist/Utils/response/error.response');
 
+// Database-free tests exercise business rules; real transaction tests live separately.
+require('node:test').beforeEach(t => {
+  t.mock.method(require('../dist/DB/repository/category.repository').categoryRepository, 'withHierarchyTransaction', async work => work(undefined));
+  t.mock.method(require('../dist/DB/repository/category.repository').categoryRepository, 'withSnapshot', async work => work(undefined));
+});
+
 test('public categories enforce visibility, filters, pagination and validation', async () => {
   const root = new Types.ObjectId();
   const hidden = new Types.ObjectId();
@@ -40,6 +46,7 @@ test('public categories enforce visibility, filters, pagination and validation',
       assert.equal(filter.isActive, true);
       let result = rows.filter(row => matches(row, filter));
       const query = {
+        setOptions() { return this; },
         sort(order) {
           result.sort((a, b) => {
             for (const [key, direction] of Object.entries(order)) {
@@ -58,13 +65,13 @@ test('public categories enforce visibility, filters, pagination and validation',
     }),
     mock.method(CategoryModel, 'countDocuments', filter => {
       assert.equal(filter.isActive, true);
-      return { exec: async () => rows.filter(row => matches(row, filter)).length };
+      return { setOptions() { return this; }, session() { return this; }, exec: async () => rows.filter(row => matches(row, filter)).length };
     }),
     mock.method(CategoryModel, 'findOne', filter => {
       assert.equal(filter.isActive, true);
-      return { exec: async () => rows.find(row => matches(row, filter)) ?? null };
+      return { setOptions() { return this; }, session() { return this; }, exec: async () => rows.find(row => matches(row, filter)) ?? null };
     }),
-    mock.method(CategoryModel, 'findById', id => ({ exec: async () => rows.find(row => row._id.equals(id)) ?? null })),
+    mock.method(CategoryModel, 'findById', id => ({ setOptions() { return this; }, session() { return this; }, exec: async () => rows.find(row => row._id.equals(id)) ?? null })),
   ];
   const app = express();
   app.use('/categories', categoryRouter);

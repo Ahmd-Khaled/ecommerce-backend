@@ -61,8 +61,16 @@ The repository uses `findByIdAndUpdate` with validators and returns the updated 
 
 ## Deletion, inventory, and errors
 
-Deletion is permanent and currently does not check historical order references. The source contains a future-work comment about that. Deactivation via PATCH preserves the record. Existing cart responses flag deleted/inactive products; checkout rejects them. An order keeps its quantity/price snapshot even if the catalog changes.
+DELETE archives the product by setting isActive=false. The stock record remains available for cancellation; PATCH may reactivate it. Orders keep product name, SKU, quantity, and price snapshots independently of subsequent catalog edits.
 
 Cart additions never reduce `stock`. Transactional checkout deducts stock only with an active-product, exact-price, and sufficient-stock predicate. See [Order](ORDER.md).
 
 Invalid inputs return 400; missing/inactive public products return 404; duplicate slug/SKU returns 409; admin authentication/role failures return 401/403. Product tests are in `tests/product.service.test.cjs`. The last full run recorded an existing test mismatch between expected `$set` update shape and the service's top-level fields plus `$unset`; documentation does not change that implementation.
+
+## Order lifecycle compatibility (2026-11-07)
+
+DELETE now archives a product by setting isActive=false and returns "Product archived successfully". The record and inventory remain available for historical orders and stock restoration; admin editing may reactivate it. There is no permanent-delete API. Archived products still protect their category from deletion. Product writes reject prices that exceed configured currency precision or safe minor-unit bounds, and stock must be a nonnegative safe integer. Existing catalog amounts remain in major units; order snapshots use integer minor units.
+
+## Local image uploads
+
+Admin create/update routes accept multipart `images` (up to 10 JPEG/PNG/WebP files, 5 MiB each), alongside validated form fields. Supplied images replace the collection; omission preserves it on update. External URL JSON requests remain supported. See [FILE_UPLOADS.md](FILE_UPLOADS.md) for examples, validation, managed URL rules, and cleanup behavior.

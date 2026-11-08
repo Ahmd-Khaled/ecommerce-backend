@@ -1,9 +1,9 @@
+import type { RequestHandler } from 'express';
+import { uploadId, uploadExpected } from '../../Middlewares/upload.middlewares';
 
-import type { RequestHandler } from "express";
+import { productService } from './product.service';
 
-import { productService } from "./product.service";
-
-import { UnauthorizedException } from "../../Utils/response/error.response";
+import { UnauthorizedException } from '../../Utils/response/error.response';
 
 import type {
   CreateProductDTO,
@@ -11,19 +11,16 @@ import type {
   ProductIdDTO,
   ProductSlugDTO,
   UpdateProductDTO,
-} from "./product.dto";
-
+} from './product.dto';
 
 class ProductController {
   /** Get active and inactive products. Admin only. */
   getAdminProducts: RequestHandler = async (req, res): Promise<void> => {
-    const data = await productService.getAdminProducts(
-      req.query as unknown as GetProductsDTO,
-    );
+    const data = await productService.getAdminProducts(req.query as unknown as GetProductsDTO);
 
     res.status(200).json({
       success: true,
-      message: "Products retrieved successfully",
+      message: 'Products retrieved successfully',
       data,
     });
   };
@@ -32,12 +29,9 @@ class ProductController {
    * Create a product.
    * Admin only.
    */
-  createProduct: RequestHandler<{}, {}, CreateProductDTO> = async (
-    req,
-    res,
-  ): Promise<void> => {
+  createProduct: RequestHandler<{}, {}, CreateProductDTO> = async (req, res): Promise<void> => {
     if (!req.user) {
-      throw new UnauthorizedException("Missing authenticated user");
+      throw new UnauthorizedException('Missing authenticated user');
     }
 
     const createdBy = req.user._id;
@@ -45,11 +39,12 @@ class ProductController {
     const product = await productService.createProduct(
       req.body,
       createdBy,
+      ...(uploadId(req) ? ([uploadId(req)!] as const) : []),
     );
 
     res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: 'Product created successfully',
       data: { product },
     });
   };
@@ -58,57 +53,44 @@ class ProductController {
    * Get public products with filtering and pagination.
    * Public.
    */
-  getPublicProducts: RequestHandler = async (
-    req,
-    res,
-  ): Promise<void> => {
-    const data = await productService.getProducts(
-      req.query as unknown as GetProductsDTO,
-    );
+  getPublicProducts: RequestHandler = async (req, res): Promise<void> => {
+    const data = await productService.getProducts(req.query as unknown as GetProductsDTO);
 
     res.status(200).json({
       success: true,
-      message: "Products retrieved successfully",
+      message: 'Products retrieved successfully',
       data,
     });
   };
-
 
   /**
    * Get active product by ID.
    * Public.
    */
-  getProductById: RequestHandler<ProductIdDTO> = async (
-    req,
-    res,
-  ): Promise<void> => {
+  getProductById: RequestHandler<ProductIdDTO> = async (req, res): Promise<void> => {
     const { productId } = req.params;
 
     const product = await productService.getActiveProductById(productId);
 
     res.status(200).json({
       success: true,
-      message: "Product retrieved successfully",
+      message: 'Product retrieved successfully',
       data: { product },
     });
   };
-
 
   /**
    * Get active product by slug.
    * Public.
    */
-  getProductBySlug: RequestHandler<ProductSlugDTO> = async (
-    req,
-    res,
-  ): Promise<void> => {
+  getProductBySlug: RequestHandler<ProductSlugDTO> = async (req, res): Promise<void> => {
     const { slug } = req.params;
 
     const product = await productService.getProductBySlug(slug);
 
     res.status(200).json({
       success: true,
-      message: "Product retrieved successfully",
+      message: 'Product retrieved successfully',
       data: { product },
     });
   };
@@ -125,12 +107,12 @@ class ProductController {
 
     const data = await productService.getProductsByCategory(
       categoryId,
-      req.query as unknown as Omit<GetProductsDTO, "category">,
+      req.query as unknown as Omit<GetProductsDTO, 'category'>,
     );
 
     res.status(200).json({
       success: true,
-      message: "Category products retrieved successfully",
+      message: 'Category products retrieved successfully',
       data,
     });
   };
@@ -148,11 +130,12 @@ class ProductController {
     const product = await productService.updateProduct(
       productId,
       req.body,
+      ...(uploadExpected(req) ? ([uploadExpected(req)!] as const) : []),
     );
 
     res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message: 'Product updated successfully',
       data: { product },
     });
   };
@@ -161,10 +144,7 @@ class ProductController {
    * Delete a product.
    * Admin only.
    */
-  deleteProduct: RequestHandler<ProductIdDTO> = async (
-    req,
-    res,
-  ): Promise<void> => {
+  deleteProduct: RequestHandler<ProductIdDTO> = async (req, res): Promise<void> => {
     const { productId } = req.params;
 
     const data = await productService.deleteProduct(productId);
