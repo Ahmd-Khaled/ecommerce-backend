@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { userManagement } from './user.authorization';
+import { userController } from './user.controller';
+export const userRouter = Router();
+userRouter.use(userManagement);
+userRouter.get('/', userController.list);
+userRouter.post('/', userController.create);
+userRouter.get('/:id', userController.details);
+userRouter.patch('/:id', userController.update);
+userRouter.patch('/:id/status', userController.update);
+userRouter.delete('/:id', userController.remove);

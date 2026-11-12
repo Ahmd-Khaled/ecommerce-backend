@@ -1,12 +1,14 @@
 # User module and account data
 
-The [User module directory](../src/Modules/user) is currently a scaffold. Its controller exports an empty Express router. `app.controller.ts` mounts that router at `/api/v1/users`; the service, routes, DTO, validation, and authorization files do not implement account-management endpoints.
+The [User module](../src/Modules/user) manages customers with `user` and `guest` roles. Administrator identities are stored separately; see [Admin](ADMIN.md).
 
 ## What a request does today
 
-`GET /api/v1/users` goes through the users IP limiter and JSON parser, reaches the empty router, and falls through to the application's 404 handler. There is no user listing, admin user update, or address endpoint under this prefix. No user service call or database operation happens for that request.
+`/api/v1/users` and its alias `/api/v1/admin/users` require an admin or super-admin access token. GET `/` lists users, POST `/` creates a user, GET `/:id` retrieves one, PATCH `/:id` (or `/:id/status`) updates one, and DELETE `/:id` soft-deletes one with a 204 response.
 
-The User database model and repository are fully used by the Auth module. An empty feature router does not mean there is no user persistence.
+Creation accepts `{firstName, lastName, email, password, role?}` and queues the existing confirmation OTP. Role defaults to `user`; the user must verify their email. Updates accept only `firstName`, `lastName`, `role` (`user`/`guest`), and `status` (`active`/`frozen`). Setting `active` unfreezes an account but does not verify its email. Updates/deletion increment tokenVersion; frozen/deleted users cannot authenticate or refresh. Deletion preserves orders and historical references and cannot be undone through this API.
+
+Lists accept `page` (default 1), `limit` (default 20, maximum 100), bounded literal `search` over names/email, `role`, and `status` (`active`, `pending`, `frozen`, `deleted`). Deleted accounts are excluded by default. Responses use `{success: true, data: {users, pagination: {page, limit, total, totalPages}}}`; individual responses use `data` for the safe user summary. Passwords, OTPs, token versions, provider IDs, and private address data are not included. Unknown input fields and operator-shaped queries are rejected.
 
 ## Where existing account APIs live
 
@@ -18,7 +20,7 @@ The User database model and repository are fully used by the Auth module. An emp
 | Change password | PATCH `/api/v1/auth/change-password` | Auth service -> guarded password update and session invalidation |
 | Recover account | PATCH `/api/v1/auth/forgot-password`, PATCH `/api/v1/auth/reset-password` | OTP issue/consume workflow |
 
-See [Auth](AUTH.md) for complete input contracts and behavior. Addresses are embedded in the User document and replaced as an array through profile update; they have no separate CRUD router.
+See [Auth](AUTH.md) for complete input contracts and behavior. Addresses are embedded in User and also have dedicated CRUD under `/api/v1/addresses`.
 
 ## User fields and hooks
 
@@ -26,4 +28,4 @@ The model stores firstName, lastName, slug, normalized unique email, hidden pass
 
 `username` is a virtual derived from firstName and lastName rather than a stored field. Changing names on document save regenerates the slug. Document pre-save hooks hash modified passwords and OTPs; a post-save hook queues confirmation email for a newly created user. Atomic repository updates bypass document save hooks, so relevant services hash passwords/OTPs before those updates.
 
-Roles are `user`, `admin`, and `guest`, but credential generation only supports user/admin. Registration defaults to user and exposes no role assignment field. There is no implemented admin-promotion endpoint. See [Database](DATABASE.md) for more about documents, hooks, and repositories.
+Roles are only `user` and `guest`; both use the `user` authorization scheme. Registration defaults to user and exposes no role assignment field. Guests may use their own account/profile/address APIs, while cart/order/payment routes still require `user`. No user-management endpoint can assign administrator roles. See [Database](DATABASE.md) for more about documents, hooks, and repositories.

@@ -1,6 +1,8 @@
 import * as z from 'zod';
 
 import {
+  googleLoginSchema,
+  googleLinkSchema,
   changePasswordSchema,
   confirmEmailSchema,
   forgotPasswordSchema,
@@ -12,6 +14,9 @@ import {
   signupSchema,
   updateProfileSchema,
 } from './auth.validation';
+
+export type IGoogleLoginDTO = z.infer<typeof googleLoginSchema.body>;
+export type IGoogleLinkDTO = z.infer<typeof googleLinkSchema.body>;
 
 // ============================================================================
 // Signup DTO

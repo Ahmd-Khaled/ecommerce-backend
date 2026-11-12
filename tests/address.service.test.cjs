@@ -84,7 +84,7 @@ test('retry exhaustion reports conflict', async t => {
 test('HTTP routes authenticate, validate, and scope every operation to the current user', async t => {
   const rows = storage(t), owner = new Types.ObjectId(), other = new Types.ObjectId();
   rows.set(String(owner), []); rows.set(String(other), []);
-  t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: authorization === 'other' ? other : owner }, decoded: {} }));
+  t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: authorization === 'other' ? other : owner, role: 'user' }, decoded: {} }));
   const app = express(); app.use(express.json()); app.use('/api/v1/addresses', addressRouter); app.use(globalErrorHandler);
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));

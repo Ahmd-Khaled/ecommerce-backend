@@ -61,7 +61,7 @@ export const verifyToken = async ({
   token: string;
   secret: Secret;
 }): Promise<JwtPayload> => {
-  const decoded = await verify(token, secret);
+  const decoded = await verify(token, secret, { algorithms: ['HS256'] });
 
   if (typeof decoded === 'string' || !decoded) {
     throw new UnauthorizedException('Invalid Token Payload');
@@ -79,8 +79,8 @@ export const getSignatureLevel = (role: RoleEnum = RoleEnum.USER): SignatureLeve
     case RoleEnum.USER:
       return SignatureLevelEnum.USER;
 
-    case RoleEnum.ADMIN:
-      return SignatureLevelEnum.ADMIN;
+    case RoleEnum.GUEST:
+      return SignatureLevelEnum.USER;
 
     default:
       throw new ForbiddenException('This account is not allowed to generate login credentials');
@@ -166,6 +166,8 @@ export const createLoginCredentials = async (
     payload: {
       _id: user._id.toString(),
       tokenVersion,
+      identity: 'user',
+      tokenType: TokenTypeEnum.ACCESS,
     },
     secret: signatures.access_token,
     options: {
@@ -178,6 +180,8 @@ export const createLoginCredentials = async (
     payload: {
       _id: user._id.toString(),
       tokenVersion,
+      identity: 'user',
+      tokenType: TokenTypeEnum.REFRESH,
     },
     secret: signatures.refresh_token,
     options: {
@@ -210,7 +214,7 @@ export const decodedToken = async ({
 
   // --------------------------------------------------------------------------
   // 1. Validate Authorization Header
-  // Expected format: user <token> OR admin <token>
+  // Expected format: user <token>. Administrators use decodedAdminToken.
   // --------------------------------------------------------------------------
 
   const parts = authorization.trim().split(/\s+/);
@@ -221,7 +225,7 @@ export const decodedToken = async ({
 
   const [signatureLevel, token] = parts;
 
-  if (!token || !Object.values(SignatureLevelEnum).includes(signatureLevel as SignatureLevelEnum)) {
+  if (!token || signatureLevel !== SignatureLevelEnum.USER) {
     throw new UnauthorizedException('Invalid Authorization Scheme');
   }
 
@@ -242,16 +246,18 @@ export const decodedToken = async ({
   // 3. Verify JWT Signature & Expiration
   // --------------------------------------------------------------------------
 
-  const decoded = await verifyToken({
-    token,
-    secret,
-  });
+  let decoded: JwtPayload;
+  try { decoded = await verifyToken({ token, secret }); }
+  catch { throw new UnauthorizedException('Invalid login credentials'); }
 
   // --------------------------------------------------------------------------
   // 4. Validate Required JWT Claims
   // --------------------------------------------------------------------------
 
   if (
+    decoded.identity !== 'user' ||
+    decoded.tokenType !== tokenType ||
+    !Types.ObjectId.isValid(String(decoded._id)) ||
     typeof decoded._id !== 'string' ||
     typeof decoded.jti !== 'string' ||
     typeof decoded.iat !== 'number' ||
@@ -273,13 +279,15 @@ export const decodedToken = async ({
     },
   });
 
-  if (!user) {
+  if (!user || !Object.values(RoleEnum).includes(user.role) || user.deletedAt) {
     throw new UnauthorizedException('Invalid or old login credentials');
   }
 
   // --------------------------------------------------------------------------
   // 6. Check Token Version
   // --------------------------------------------------------------------------
+
+  if (user.freezedAt) throw new ForbiddenException('Your account is currently frozen');
 
   if (decoded.tokenVersion !== user.tokenVersion) {
     throw new UnauthorizedException('Your session has expired. Please login again.');
@@ -353,6 +361,7 @@ export const createRevokeTokens = async (decodedTokens: JwtPayload[]) => {
       jti: decoded.jti,
       expiresAt,
       userId: new Types.ObjectId(decoded._id),
+      identityModel: decoded.identity === 'admin' ? 'Admin' as const : 'User' as const,
     };
   });
 

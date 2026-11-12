@@ -163,9 +163,10 @@ export const UserSchema = new Schema<IUser, UserModelType, {}, IUserVirtuals>(
 
     password: {
       type: String,
-      required: true,
+      required: function (this: IUser): boolean { return !this.googleSub; },
       select: false,
     },
+    googleSub: { type: String, maxlength: 255 },
 
     // ------------------------------------------------------------------------
     // Contact Information
@@ -287,6 +288,8 @@ export const UserSchema = new Schema<IUser, UserModelType, {}, IUserVirtuals>(
       select: false,
     },
 
+    deletedAt: { type: Date },
+
     freezedAt: {
       type: Date,
     },
@@ -347,6 +350,12 @@ export const UserSchema = new Schema<IUser, UserModelType, {}, IUserVirtuals>(
  * username -> firstName + lastName + slug
  */
 
+UserSchema.index({ role: 1, createdAt: -1, _id: -1 });
+UserSchema.index({ googleSub: 1 }, {
+  unique: true,
+  partialFilterExpression: { googleSub: { $type: 'string' } },
+});
+
 UserSchema.virtual('username')
   .get(function () {
     return generateUsername(this.firstName, this.lastName);
@@ -406,7 +415,7 @@ UserSchema.pre('save', async function () {
   // Password Hashing
   // --------------------------------------------------------------------------
 
-  if (this.isModified('password')) {
+  if (this.isModified('password') && this.password) {
     this.password = await generateHash(this.password);
   }
 

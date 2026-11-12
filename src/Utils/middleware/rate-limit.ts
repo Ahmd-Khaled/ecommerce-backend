@@ -18,7 +18,7 @@ const createLimiter = (limit: number, windowMs = 15 * MINUTE) =>
 // Shared auth budget allows multi-step flows; endpoints have separate counters.
 export const authLimiter = createLimiter(30);
 export const registerLimiter = createLimiter(5);
-export const loginLimiter = createLimiter(5);
+export const loginLimiter = createLimiter(10);
 export const otpLimiter = createLimiter(5, 10 * MINUTE);
 export const forgotPasswordLimiter = createLimiter(5, 10 * MINUTE);
 export const resetPasswordLimiter = createLimiter(5, 10 * MINUTE);

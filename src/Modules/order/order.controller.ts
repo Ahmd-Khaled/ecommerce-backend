@@ -41,7 +41,7 @@ class OrderController {
   transition: RequestHandler = async (req, res) => {
     res.json({
       success: true,
-      data: await orderService.transition(req.user!._id, req.params.orderId, req.body),
+      data: await orderService.transition(req.admin!._id, req.params.orderId, req.body),
     });
   };
 }

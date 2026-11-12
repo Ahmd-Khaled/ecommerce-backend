@@ -6,15 +6,15 @@ These guides describe the code as implemented, including incomplete modules and 
 
 ## Suggested reading order
 
-1. [Architecture and request lifecycle](ARCHITECTURE.md): how the server starts and how the layers fit together.
-2. [Setup, configuration, and tests](SETUP.md): run the application and understand its dependencies.
-3. [Database and repositories](DATABASE.md): collections, relationships, hooks, and persistence methods.
-4. [Authentication APIs](AUTH.md): registration, verification, sessions, profiles, and password recovery.
-5. [Category APIs](CATEGORY.md): hierarchy, public visibility, administration, and product counts.
-6. [Product APIs](PRODUCT.md): catalog browsing, validation, pricing, and management.
-7. [Cart APIs](CART_MODULE.md): item operations, current prices, limits, and concurrency.
-8. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
-9. [User module](USER.md) and [Payment module](PAYMENT.md): what exists and what is not implemented.
+1. [Complete API reference](API.md): all registered endpoints, access requirements, parameters, filters, bodies, and responses.
+2. [Architecture and request lifecycle](ARCHITECTURE.md): how the server starts and how the layers fit together.
+3. [Setup, configuration, and tests](SETUP.md): run the application and understand its dependencies.
+4. [Database and repositories](DATABASE.md): collections, relationships, hooks, and persistence methods.
+5. [Authentication APIs](AUTH.md): registration, verification, sessions, profiles, and password recovery.
+6. [Category APIs](CATEGORY.md): hierarchy, public visibility, administration, and product counts.
+7. [Product APIs](PRODUCT.md): catalog browsing, validation, pricing, and management.
+8. [Cart APIs](CART_MODULE.md): item operations, current prices, limits, and concurrency.
+9. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
 10. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
 
 ## Existing documents
@@ -42,13 +42,15 @@ These guides describe the code as implemented, including incomplete modules and 
 
 | Prefix | Status | Guide |
 | --- | --- | --- |
+| `/api/v1/admin` | Implemented admin session/account APIs and super-admin management | [API reference](API.md), [Admin](ADMIN.md) |
 | `/api/v1/auth` | Implemented; also owns profile APIs | [Auth](AUTH.md) |
+| `/api/v1/addresses` | Implemented; USER access required | [API reference](API.md), [Address](ADDRESS.md) |
 | `/api/v1/categories` | Implemented public and admin APIs | [Category](CATEGORY.md) |
 | `/api/v1/products` | Implemented public and admin APIs | [Product](PRODUCT.md) |
 | `/api/v1/cart` | Implemented; USER access required | [Cart](CART_MODULE.md) |
 | `/api/v1/orders` | Checkout, history, details, admin fulfillment, cancellation | [Order](ORDER.md) |
-| `/api/v1/users` | Empty mounted router | [User](USER.md) |
-| `/api/v1/payments` | Empty mounted router | [Payment](PAYMENT.md) |
+| `/api/v1/users` | Admin user management mounted under `/admin/users` | [API reference](API.md), [User](USER.md) |
+| `/api/v1/payments` | Stripe checkout, status, and webhook handlers | [API reference](API.md), [Payment](PAYMENT.md) |
 | `/test` | Public GET smoke-test response | [Architecture](ARCHITECTURE.md) |
 
 API examples use fictitious IDs. Replace them with records from your database. Authorization is `user <token>` or `admin <token>` in this project; it is not the usual `Bearer` scheme.

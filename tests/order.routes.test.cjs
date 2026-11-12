@@ -11,6 +11,7 @@ const { globalErrorHandler } = require('../dist/Utils/response/error.response');
 test('HTTP routes enforce roles, validate requests, scope owners and distinguish checkout replay', async t => {
   const user = new Types.ObjectId(), id = new Types.ObjectId();
   t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: user, role: authorization }, decoded: {} }));
+  t.mock.method(require('../dist/Modules/admin/admin.token'), 'decodedAdminToken', async authorization => ({ admin: { _id: user, role: authorization }, decoded: {} }));
   const calls = [];
   t.mock.method(orderRepository, 'list', async (...args) => { calls.push(['list', ...args]); return { orders: [], pagination: {} }; });
   t.mock.method(orderRepository, 'details', async (...args) => { calls.push(['details', ...args]); return {}; });

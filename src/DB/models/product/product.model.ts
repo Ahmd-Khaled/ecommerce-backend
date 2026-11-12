@@ -106,7 +106,7 @@ const productSchema = new Schema<IProduct>(
 
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Admin',
       required: [true, 'Product creator is required'],
     },
   },

@@ -17,10 +17,11 @@ export const TokenSchema = new Schema<IToken>(
       expires: 0,
     },
 
+    identityModel: { type: String, enum: ['User', 'Admin'], default: 'User' },
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'User',
+      refPath: 'identityModel',
       index: true,
     },
   },

@@ -114,3 +114,8 @@ Email delivery is asynchronous after successful enqueue. MongoDB updates and Red
 ## Profile avatar uploads
 
 `PATCH /api/v1/auth/profile` accepts multipart `avatar` (one JPEG/PNG/WebP file, 2 MiB) and normal profile fields. The authenticated user owns the destination; a client cannot select another user ID. Profile responses include the stored avatar URL. Avatars are public assets. See [FILE_UPLOADS.md](FILE_UPLOADS.md) for examples and replacement behavior.
+
+## Google login
+
+See [Google authentication](GOOGLE_AUTH.md) for ID-token login, explicit account linking, configuration, indexes, and tests.
+

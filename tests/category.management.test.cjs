@@ -110,6 +110,7 @@ test('category deletion stops if the product lookup fails', async t => {
 test('management routes enforce real authorization middleware and input validation', async t => {
   const id = new Types.ObjectId();
   t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: id, role: authorization }, decoded: {} }));
+  t.mock.method(require('../dist/Modules/admin/admin.token'), 'decodedAdminToken', async authorization => ({ admin: { _id: id, role: authorization }, decoded: {} }));
   const calls = [];
   for (const method of ['createCategory', 'updateCategory', 'deleteCategory', 'getCategories', 'getCategoryById']) {
     t.mock.method(service, method, async (...args) => { calls.push([method, ...args]); return {}; });

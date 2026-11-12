@@ -29,7 +29,7 @@ before(async () => {
   png = await sharp({ create: { width: 4, height: 3, channels: 3, background: '#ff8800' } }).png().toBuffer();
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { if (req.headers.authorization === 'test') req.user = { _id: owner }; next(); });
+  app.use((req, _res, next) => { if (req.headers.authorization === 'test') { req.user = { _id: owner }; req.admin = { _id: owner }; } next(); });
   const persist = async (req, res) => {
     const id = uploadId(req)?.toString() ?? owner.toString();
     calls.push({ id, body: req.body });

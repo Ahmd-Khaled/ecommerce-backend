@@ -1,10 +1,11 @@
+import { adminAuthentication } from '../admin/admin.authorization';
 import { Router } from 'express';
 import { orderController } from './order.controller';
 import { authentication } from '../../Middlewares/authentication.middlewares';
 import { TokenTypeEnum } from '../../Utils/security/token';
 import { RoleEnum } from '../../DB/models/user/user.interface';
 const router = Router();
-const admin = authentication(TokenTypeEnum.ACCESS, [RoleEnum.ADMIN]);
+const admin = adminAuthentication();
 const customer = authentication(TokenTypeEnum.ACCESS, [RoleEnum.USER]);
 // Literal admin paths precede customer identifiers. Services validate every entry point.
 router.get('/admin', admin, orderController.adminList);

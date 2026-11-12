@@ -14,6 +14,22 @@ class UserRepository extends DatabaseRepository<IUser, IUserVirtuals, HUserDocum
     super(UserModel);
   }
 
+  async findByGoogleSub(googleSub: string): Promise<HUserDocument | null> {
+    return this.model.findOne({ googleSub }).exec();
+  }
+
+  async linkGoogle(user: HUserDocument, googleSub: string): Promise<HUserDocument | null> {
+    if (!user.password) return null;
+    return this.model.findOneAndUpdate({
+      _id: user._id,
+      googleSub: { $exists: false },
+      password: user.password,
+      tokenVersion: user.tokenVersion,
+      confirmedAt: { $ne: null },
+      freezedAt: null,
+    }, { $set: { googleSub } }, { returnDocument: 'after', runValidators: true }).exec();
+  }
+
   // --------------------------------------------------------------------------
   // Find user by email
   // --------------------------------------------------------------------------

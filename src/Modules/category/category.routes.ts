@@ -16,10 +16,10 @@ import {
 
 import { validations } from '../../Middlewares/validation.middlewares';
 
-import { authentication } from '../../Middlewares/authentication.middlewares';
-import { TokenTypeEnum } from '../../Utils/security/token';
+import { adminAuthentication } from '../admin/admin.authorization';
 
-import { RoleEnum } from '../../DB/models/user/user.interface';
+
+
 
 const router = Router();
 
@@ -69,7 +69,7 @@ router.get(
  */
 
 // Apply authentication and admin authorization.
-router.use(authentication(TokenTypeEnum.ACCESS, [RoleEnum.ADMIN]));
+router.use(adminAuthentication());
 
 // GET /api/v1/categories
 router.get('/', categoryController.getCategories);

@@ -1,6 +1,8 @@
 import type { RequestHandler } from 'express';
 import { uploadExpected } from '../../Middlewares/upload.middlewares';
 import type {
+  IGoogleLoginDTO,
+  IGoogleLinkDTO,
   IChangePasswordDTO,
   IConfirmEmailDTO,
   IForgotPasswordDTO,
@@ -21,6 +23,21 @@ import { BadRequestException, UnauthorizedException } from '../../Utils/response
 // ============================================================================
 
 class AuthController {
+  googleLogin: RequestHandler = async (req, res): Promise<void> => {
+    const result = await authService.googleLogin(req.body as IGoogleLoginDTO);
+    const { refreshToken, ...tokens } = result.tokens;
+    setRefreshTokenCookie(res, refreshToken, tokens.tokenType);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({ success: true, ...result, tokens });
+  };
+
+  linkGoogle: RequestHandler = async (req, res): Promise<void> => {
+    if (!req.user) throw new UnauthorizedException('Missing authenticated user');
+    const result = await authService.linkGoogle(req.user._id, req.body as IGoogleLinkDTO);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({ success: true, ...result });
+  };
+
   testRevoke: RequestHandler = async (req, res): Promise<void> => {
     if (!req.decoded) {
       throw new UnauthorizedException('Missing authenticated token');

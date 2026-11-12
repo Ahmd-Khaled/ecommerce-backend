@@ -11,7 +11,6 @@ export enum GenderEnum {
 
 export enum RoleEnum {
   USER = 'user',
-  ADMIN = 'admin',
   GUEST = 'guest',
 }
 
@@ -44,7 +43,8 @@ export interface IUser {
 
   // Authentication
   email: string;
-  password: string;
+  password?: string;
+  googleSub?: string;
 
   // Contact information
   phone?: string;
@@ -77,6 +77,7 @@ export interface IUser {
   // Account security
   changeCredentialsTime?: Date;
   freezedAt?: Date;
+  deletedAt?: Date;
 
   // Token versioning
   tokenVersion: number;

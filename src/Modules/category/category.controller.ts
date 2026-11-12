@@ -28,11 +28,11 @@ class CategoryController {
    * Admin only.
    */
   createCategory: RequestHandler<{}, {}, CreateCategoryDTO> = async (req, res): Promise<void> => {
-    if (!req.user) {
+    if (!req.admin) {
       throw new UnauthorizedException('Missing authenticated user');
     }
 
-    const createdBy = req.user._id;
+    const createdBy = req.admin._id;
 
     const category = await categoryService.createCategory(
       req.body,

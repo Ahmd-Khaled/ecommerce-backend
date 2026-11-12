@@ -1,0 +1,26 @@
+import { Router } from 'express';
+import { AdminRoleEnum } from '../../DB/models/admin/admin.interface';
+import { validations } from '../../Middlewares/validation.middlewares';
+import { loginLimiter } from '../../Utils/middleware/rate-limit';
+import { adminAuthentication } from './admin.authorization';
+import { adminController } from './admin.controller';
+import { adminRefreshSchema } from './admin.validation';
+import { userRouter } from '../user/user.routes';
+
+export const adminRouter = Router();
+adminRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+adminRouter.post('/auth/login', loginLimiter, adminController.login);
+adminRouter.post('/auth/refresh-token', loginLimiter, validations(adminRefreshSchema), adminController.refresh);
+adminRouter.post('/auth/logout', adminAuthentication(), validations(adminRefreshSchema), adminController.logout);
+adminRouter.post('/auth/logout-all', adminAuthentication(), adminController.logoutAll);
+adminRouter.get('/auth/profile', adminAuthentication(), adminController.profile);
+adminRouter.patch('/auth/profile', adminAuthentication(), adminController.updateProfile);
+adminRouter.patch('/auth/change-password', loginLimiter, adminAuthentication(), adminController.changePassword);
+adminRouter.use('/users', userRouter);
+adminRouter.use(adminAuthentication([AdminRoleEnum.SUPER_ADMIN]));
+adminRouter.get('/', adminController.list);
+adminRouter.post('/', adminController.create);
+adminRouter.get('/:id', adminController.details);
+adminRouter.patch('/:id', adminController.update);
+adminRouter.patch('/:id/status', adminController.update);
+adminRouter.delete('/:id', adminController.remove);

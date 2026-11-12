@@ -1,3 +1,5 @@
+import { adminRouter } from './Modules/admin/admin.routes';
+import { AdminModel } from './DB/models/admin/admin.model';
 import { mediaRouter } from './Utils/storage/storage.service';
 import { storageConfig } from './Utils/storage/storage.config';
 import { startUploadCleanup } from './Utils/storage/upload.cleanup';
@@ -20,7 +22,7 @@ import { categoryRouter } from './Modules/category/category.routes';
 import { orderRouter as ordersRouter } from './Modules/order/order.routes';
 import { paymentRouter } from './Modules/payment/payment.routes';
 import { productRouter } from './Modules/product/product.routes';
-import usersRouter from './Modules/user/user.controller';
+import { userRouter } from './Modules/user/user.routes';
 import { cartRouter } from './Modules/cart/cart.routes';
 import { addressRouter } from './Modules/address/address.routes';
 import { CartModel } from './DB/models/cart/cart.model';
@@ -67,6 +69,7 @@ export const bootstrap = async (): Promise<Server> => {
   await connectDB();
   // Cart creation safety requires the unique index before accepting traffic.
   await CartModel.createIndexes();
+  await AdminModel.init();
   await OrderModel.init();
   await OrderModel.createIndexes();
   await startEmailQueue();
@@ -78,6 +81,8 @@ export const bootstrap = async (): Promise<Server> => {
   app.use('/media', productsLimiter, mediaRouter);
 
   // Authentication: credentials and verification codes.
+  app.use('/api/v1/admin', authLimiter, express.json({ limit: '50kb' }), adminRouter);
+
   app.use('/api/v1/auth', authLimiter, express.json({ limit: '10kb' }), authRouter);
 
   // Products: descriptions, variants, attributes, and image URLs.
@@ -86,7 +91,7 @@ export const bootstrap = async (): Promise<Server> => {
   app.use('/api/v1/addresses', usersLimiter, express.json({ limit: '10kb' }), addressRouter);
 
   // Users: profile fields and saved addresses.
-  app.use('/api/v1/users', usersLimiter, express.json({ limit: '50kb' }), usersRouter);
+  app.use('/api/v1/users', usersLimiter, express.json({ limit: '50kb' }), userRouter);
 
   // Categories: names, descriptions, and parent references.
   app.use('/api/v1/categories', categoriesLimiter, express.json({ limit: '20kb' }), categoryRouter);

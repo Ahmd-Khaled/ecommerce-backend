@@ -3,6 +3,13 @@ import * as z from 'zod';
 import { generalFields } from '../../Middlewares/validation.fields';
 import { GenderEnum } from '../../DB/models/user/user.interface';
 
+const googleIdToken = z.string().min(1).max(8192)
+  .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, 'Invalid Google ID token');
+export const googleLoginSchema = { body: z.strictObject({ idToken: googleIdToken }) };
+export const googleLinkSchema = {
+  body: z.strictObject({ idToken: googleIdToken, currentPassword: generalFields.password }),
+};
+
 const phoneSchema = z
   .string()
   .trim()
@@ -80,7 +87,7 @@ export const refreshTokenSchema = {
       .min(1)
       .max(8192)
       .regex(
-        /^(user|admin) [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
+        /^user [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
         'Invalid refresh cookie',
       ),
   }),

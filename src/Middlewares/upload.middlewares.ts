@@ -81,7 +81,8 @@ export function uploadRoute(
         await handler(req, res, next);
         return;
       }
-      if (!req.user) throw new UnauthorizedException('Authentication required');
+      const principal = policy.module === 'users' ? req.user : req.admin;
+      if (!principal) throw new UnauthorizedException('Authentication required');
       const config = storageConfig();
       if (concurrent >= config.concurrency)
         throw new ApplicationException('Upload capacity reached; retry later', 503);
@@ -94,7 +95,7 @@ export function uploadRoute(
       const param = policy.param ? req.params[policy.param] : undefined;
       const id =
         policy.module === 'users'
-          ? req.user._id
+          ? principal._id
           : param
             ? new Types.ObjectId(String(param))
             : new Types.ObjectId();
@@ -200,7 +201,7 @@ export function uploadRoute(
               url,
               module: policy.module,
               ownerId: id.toString(),
-              uploadedBy: req.user._id.toString(),
+              uploadedBy: principal._id.toString(),
               field: field.name,
               size: 0,
               width: 0,

@@ -1,4 +1,6 @@
 import type {
+  IGoogleLoginDTO,
+  IGoogleLinkDTO,
   ISignupDTO,
   IConfirmEmailDTO,
   ILoginDTO,
@@ -7,6 +9,8 @@ import type {
   IForgotPasswordDTO,
   IResetPasswordDTO,
 } from './auth.dto';
+import { verifyGoogleToken } from './auth.google';
+import { RoleEnum, type HUserDocument } from '../../DB/models/user/user.interface';
 
 import type { JwtPayload } from 'jsonwebtoken';
 import type { Types } from 'mongoose';
@@ -60,6 +64,71 @@ const isDuplicateKeyError = (error: unknown): boolean => {
 
 class AuthService {
   private readonly MAX_OTP_ATTEMPTS = 5;
+
+  private checkGoogleAccount(user: HUserDocument) {
+    if (user.deletedAt || !Object.values(RoleEnum).includes(user.role)) throw new UnauthorizedException('Invalid account');
+    if (!user.confirmedAt) throw new ForbiddenException('Please verify your email before logging in');
+    if (user.freezedAt) throw new ForbiddenException('Your account is currently frozen');
+  }
+
+  async googleLogin({ idToken }: IGoogleLoginDTO) {
+    const identity = await verifyGoogleToken(idToken);
+    let user = await userRepository.findByGoogleSub(identity.sub);
+    if (!user) {
+      const emailOwner = await userRepository.findByEmail(identity.email);
+      if (emailOwner && emailOwner.googleSub !== identity.sub) {
+        throw new ConflictException('An account with this email already exists. Login and explicitly link Google.');
+      }
+      const profileName = (value: string | undefined, fallback: string) => {
+        const name = value?.trim().slice(0, 30);
+        return name && name.length >= 2 && /[\p{L}\p{N}]/u.test(name) ? name : fallback;
+      };
+      try {
+        user = await userRepository.createUser({
+          googleSub: identity.sub,
+          email: identity.email,
+          firstName: profileName(identity.given_name, 'Google'),
+          lastName: profileName(identity.family_name, 'User'),
+          confirmedAt: new Date(),
+        });
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) throw error;
+        // Only recover the same provider identity, never an email match.
+        user = await userRepository.findByGoogleSub(identity.sub);
+        if (!user) throw new ConflictException('An account with this email already exists. Login and explicitly link Google.');
+      }
+    }
+    this.checkGoogleAccount(user);
+    const credentials = await createLoginCredentials(user);
+    return {
+      message: 'Login successful',
+      user: { id: user._id.toString(), firstName: user.firstName, lastName: user.lastName,
+        username: user.username, email: user.email, role: user.role },
+      tokens: { accessToken: credentials.accessToken, refreshToken: credentials.refreshToken,
+        tokenType: credentials.signatureLevel },
+    };
+  }
+
+  async linkGoogle(userId: Types.ObjectId, data: IGoogleLinkDTO) {
+    const user = await userRepository.findUserByIdWithPassword(userId);
+    if (!user || !user.password || !await compareHash(data.currentPassword, user.password)) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    this.checkGoogleAccount(user);
+    const identity = await verifyGoogleToken(data.idToken);
+    if (user.googleSub === identity.sub) return { message: 'Google account linked successfully' };
+    if (user.googleSub) throw new ConflictException('A Google account is already linked');
+    const owner = await userRepository.findByEmail(identity.email);
+    if (owner && !owner._id.equals(user._id)) throw new ConflictException('Google email belongs to another account');
+    try {
+      const linked = await userRepository.linkGoogle(user, identity.sub);
+      if (!linked) throw new ConflictException('Account changed. Please login again and retry linking.');
+    } catch (error) {
+      if (isDuplicateKeyError(error)) throw new ConflictException('Google account is already linked');
+      throw error;
+    }
+    return { message: 'Google account linked successfully' };
+  }
 
   async register(data: ISignupDTO) {
     const { firstName, lastName, email, password } = data;
@@ -240,7 +309,7 @@ class AuthService {
     const user = await userRepository.findByEmailWithPassword(email);
 
     // Use the same response for unknown email and incorrect password.
-    if (!user || !user.password) {
+    if (!user || user.deletedAt || !Object.values(RoleEnum).includes(user.role) || !user.password) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -543,6 +612,7 @@ class AuthService {
     }
 
     // 1. Verify the current password.
+    if (!user.password) throw new UnauthorizedException('Current password is incorrect');
     const isCurrentPasswordValid = await compareHash(data.currentPassword, user.password);
 
     if (!isCurrentPasswordValid) {
@@ -575,7 +645,7 @@ class AuthService {
     const user = await userRepository.findUserForPasswordReset(data.email);
 
     // Always return the same response for unknown or unconfirmed accounts.
-    if (!user) {
+    if (!user || user.deletedAt || user.freezedAt || !Object.values(RoleEnum).includes(user.role)) {
       return { message: FORGOT_PASSWORD_RESPONSE };
     }
 
@@ -645,7 +715,7 @@ class AuthService {
   async resetPassword(data: IResetPasswordDTO, ip?: string) {
     const user = await userRepository.findUserForPasswordResetWithPassword(data.email);
 
-    if (!user || !user.resetPasswordOTP || !user.resetPasswordOTPExpiresAt) {
+    if (!user || user.deletedAt || user.freezedAt || !Object.values(RoleEnum).includes(user.role) || !user.resetPasswordOTP || !user.resetPasswordOTPExpiresAt) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
@@ -702,7 +772,7 @@ class AuthService {
     }
 
     // 4. Prevent reusing the current password.
-    const isSamePassword = await compareHash(data.newPassword, user.password);
+    const isSamePassword = user.password ? await compareHash(data.newPassword, user.password) : false;
 
     if (isSamePassword) {
       throw new BadRequestException('New password must be different from your current password');

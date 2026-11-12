@@ -28,6 +28,7 @@ test('module routes authenticate before uploads and pass record IDs, typed body,
   const id = new Types.ObjectId();
   const png = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'red' } }).png().toBuffer();
   t.mock.method(token, 'decodedToken', async ({ authorization }) => ({ user: { _id: id, role: authorization }, decoded: {} }));
+  t.mock.method(require('../dist/Modules/admin/admin.token'), 'decodedAdminToken', async authorization => ({ admin: { _id: id, role: authorization }, decoded: {} }));
   const lookup = t.mock.method(storageService, 'owner', async () => ({ value: 'old' }));
   const calls = [];
   for (const [service, method] of [[categoryService, 'createCategory'], [categoryService, 'updateCategory'], [productService, 'createProduct'], [authService, 'updateProfile']]) {

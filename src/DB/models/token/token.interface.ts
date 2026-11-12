@@ -8,6 +8,7 @@ export interface IToken {
   jti: string;
   expiresAt: Date;
   userId: Types.ObjectId;
+  identityModel?: 'User' | 'Admin';
 
   createdAt?: Date;
   updatedAt?: Date;

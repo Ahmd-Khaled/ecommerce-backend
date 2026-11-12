@@ -28,7 +28,7 @@ function fixture(t, role = 'user') {
   return { user, revoked };
 }
 
-for (const role of ['user', 'admin']) test(`${role}: cookie login, rotation, reuse detection and version invalidation`, async t => {
+for (const role of ['user', 'guest']) test(`${role}: cookie login, rotation, reuse detection and version invalidation`, async t => {
   const { user } = fixture(t, role);
   t.mock.method(authService, 'login', async () => {
     const credentials = await token.createLoginCredentials(user);
@@ -64,12 +64,12 @@ for (const role of ['user', 'admin']) test(`${role}: cookie login, rotation, reu
 
   const fresh = await call('login', { body: { email: 'test@example.com', password: 'Password123' } });
   const logoutCookie = fresh.headers.get('set-cookie').split(';')[0];
-  const authorization = `${role} ${fresh.body.tokens.accessToken}`;
+  const authorization = `user ${fresh.body.tokens.accessToken}`;
   const logout = await call('logout', { cookie: logoutCookie, authorization });
   assert.equal(logout.status, 200); assert.match(logout.headers.get('set-cookie'), /Expires=Thu, 01 Jan 1970/);
   await assert.rejects(token.decodedToken({ authorization }), { statusCode: 401 });
   const allCredentials = await token.createLoginCredentials(user);
-  const all = await call('logout-all', { authorization: `${role} ${allCredentials.accessToken}` });
+  const all = await call('logout-all', { authorization: `user ${allCredentials.accessToken}` });
   assert.equal(all.status, 200); assert.match(all.headers.get('set-cookie'), /Path=\/api\/v1\/auth/); assert.equal(user.tokenVersion, 2);
 });
 

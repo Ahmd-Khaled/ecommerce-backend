@@ -4,6 +4,8 @@ import { avatarUpload } from '../../Utils/storage/upload.policies';
 
 import { authController } from './auth.controller';
 import {
+  googleLoginSchema,
+  googleLinkSchema,
   signupSchema,
   confirmEmailSchema,
   resendConfirmEmailSchema,
@@ -29,6 +31,9 @@ import { authentication } from '../../Middlewares/authentication.middlewares';
 import { developmentOnly } from '../../Middlewares/development.middlewares';
 
 const router = Router();
+
+router.post('/google', loginLimiter, validations(googleLoginSchema), authController.googleLogin);
+router.post('/google/link', loginLimiter, authentication(), validations(googleLinkSchema), authController.linkGoogle);
 
 // POST /api/v1/auth/register
 router.post('/register', registerLimiter, validations(signupSchema), authController.register);
