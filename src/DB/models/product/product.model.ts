@@ -122,6 +122,8 @@ productSchema.index({ category: 1, isActive: 1 });
 productSchema.index({ isActive: 1, price: 1 });
 
 productSchema.index({ createdAt: -1 });
+productSchema.index({ isActive: 1, createdAt: -1, _id: -1 });
+productSchema.index({ stock: 1, _id: 1 });
 
 // Compare-at price must be greater than selling price.
 productSchema.pre('validate', function () {

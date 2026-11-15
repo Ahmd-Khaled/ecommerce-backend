@@ -33,8 +33,15 @@ export const stripeGateway = {
       const result = await response.json() as CheckoutSession;
       if (!result || typeof result.id !== 'string' || !result.id.startsWith('cs_')) throw new Error('Invalid provider response');
       return result;
-    } catch {
-      throw new ApplicationException('Payment provider unavailable; retry with the same Idempotency-Key', 503);
+    } catch (error) {
+      console.error('[Stripe Gateway Error]', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      throw new ApplicationException(
+        'Payment provider unavailable; retry with the same Idempotency-Key',
+        503,
+      );
     }
   },
 };

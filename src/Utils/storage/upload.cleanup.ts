@@ -35,7 +35,7 @@ export async function reconcileUploads() {
         }
       }
     };
-    for (const directory of ['staging', 'users', 'products', 'categories']) await walk(directory);
+    for (const directory of ['staging', 'users', 'products', 'categories', 'banners']) await walk(directory);
   } finally {
     running = false;
   }

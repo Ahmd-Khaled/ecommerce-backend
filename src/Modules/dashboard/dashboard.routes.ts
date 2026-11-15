@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { adminAuthentication } from '../admin/admin.authorization';
+import { validations } from '../../Middlewares/validation.middlewares';
+import { dashboardController } from './dashboard.controller';
+import { overviewSchema, salesSchema, topProductsSchema } from './dashboard.validation';
+export const dashboardRouter = Router();
+dashboardRouter.use(adminAuthentication());
+dashboardRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+dashboardRouter.get('/overview', validations({ query: overviewSchema }), dashboardController.overview);
+dashboardRouter.get('/sales', validations({ query: salesSchema }), dashboardController.sales);
+dashboardRouter.get('/top-products', validations({ query: topProductsSchema }), dashboardController.topProducts);

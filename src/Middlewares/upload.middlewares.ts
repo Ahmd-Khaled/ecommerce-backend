@@ -39,6 +39,7 @@ function validateURLs(req: Request, policy: UploadPolicy) {
   for (const field of policy.fields) {
     const values = req.body?.[field.name];
     if (values === undefined) continue;
+    if (policy.module === 'banners') throw new BadRequestException('Banner image must be an uploaded file');
     if (policy.module === 'users') throw new BadRequestException('Avatar must be an uploaded file');
     for (const value of Array.isArray(values) ? values : [values]) {
       if (typeof value !== 'string') continue; // Zod reports shape errors.

@@ -1,4 +1,11 @@
 import { adminRouter } from './Modules/admin/admin.routes';
+import { languageMiddleware } from './Middlewares/language.middlewares';
+import { bannerRouter } from './Modules/banner/banner.routes';
+import { homeRouter } from './Modules/home/home.routes';
+import { dashboardRouter } from './Modules/dashboard/dashboard.routes';
+import { lowStockThreshold } from './Modules/dashboard/dashboard.config';
+import { BannerModel } from './DB/models/banner/banner.model';
+import { ProductModel } from './DB/models/product/product.model';
 import { AdminModel } from './DB/models/admin/admin.model';
 import { mediaRouter } from './Utils/storage/storage.service';
 import { storageConfig } from './Utils/storage/storage.config';
@@ -58,6 +65,7 @@ export const bootstrap = async (): Promise<Server> => {
   app.use(cors(corsOptions()));
   app.use(helmet());
   app.use(cookieParser());
+  app.use(languageMiddleware);
 
   // ==========================================
   // Database Connection
@@ -66,12 +74,15 @@ export const bootstrap = async (): Promise<Server> => {
   storageConfig();
   cartLimits();
   storeMoney();
+  lowStockThreshold();
   await connectDB();
   // Cart creation safety requires the unique index before accepting traffic.
   await CartModel.createIndexes();
   await AdminModel.init();
   await OrderModel.init();
   await OrderModel.createIndexes();
+  await BannerModel.createIndexes();
+  await ProductModel.createIndexes();
   await startEmailQueue();
 
   // ==========================================
@@ -79,6 +90,9 @@ export const bootstrap = async (): Promise<Server> => {
   // ==========================================
 
   app.use('/media', productsLimiter, mediaRouter);
+  app.use('/api/v1/banners', productsLimiter, express.json({ limit: '20kb' }), bannerRouter);
+  app.use('/api/v1/home', productsLimiter, homeRouter);
+  app.use('/api/v1/dashboard', ordersLimiter, dashboardRouter);
 
   // Authentication: credentials and verification codes.
   app.use('/api/v1/admin', authLimiter, express.json({ limit: '50kb' }), adminRouter);

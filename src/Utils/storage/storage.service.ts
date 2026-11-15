@@ -5,6 +5,7 @@ import type { ICategory } from '../../DB/models/category/category.interface';
 import { ProductModel } from '../../DB/models/product/product.model';
 import { CategoryModel } from '../../DB/models/category/category.model';
 import { UserModel } from '../../DB/models/user/user.model';
+import { BannerModel } from '../../DB/models/banner/banner.model';
 import { localStorage, safePath, keyPattern } from './local.storage';
 import { NotFoundException } from '../response/error.response';
 import type { StorageModule, StoredFile } from './storage.types';
@@ -12,6 +13,10 @@ import type { StorageModule, StoredFile } from './storage.types';
 export const storageService = {
   async owner(module: StorageModule, id: string): Promise<{ value: unknown } | null> {
     const _id = new Types.ObjectId(id);
+    if (module === 'banners') {
+      const row = await BannerModel.findById(_id).select('image').lean().exec();
+      return row ? { value: row.image } : null;
+    }
     if (module === 'products') {
       const row = await (ProductModel as Model<IProduct>)
         .findById(_id)
@@ -36,7 +41,8 @@ export const storageService = {
     return Boolean(
       (await ProductModel.exists({ images: file.url })) ||
       (await CategoryModel.exists({ image: file.url })) ||
-      (await UserModel.exists({ avatar: file.url })),
+      (await UserModel.exists({ avatar: file.url })) ||
+      (await BannerModel.exists({ image: file.url })),
     );
   },
   async visible(file: StoredFile): Promise<boolean> {

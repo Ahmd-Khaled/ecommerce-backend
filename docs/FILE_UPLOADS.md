@@ -1,6 +1,6 @@
 # Shared image uploads
 
-Implemented 2026-11-08. The API accepts local image uploads on existing profile, product, and category write routes. Other modules do not currently have an attachment requirement. PDF/Office documents, SVG, GIF, archives, video, scripts, and executables are not enabled.
+The API accepts local image uploads on profile, product, category, and banner write routes. PDF/Office documents, SVG, GIF, archives, video, scripts, and executables are not enabled. See [banner APIs](HOME_DASHBOARD_BANNERS.md) for language/device selection and scheduling.
 
 ## API contract
 
@@ -13,6 +13,8 @@ Send `multipart/form-data` with an access token in the `Authorization` header. L
 | `PATCH /api/v1/products/:productId` | Admin | `images` (repeat field) | 10 files, 5 MiB each |
 | `POST /api/v1/categories` | Admin | `image` | 1 file, 5 MiB |
 | `PATCH /api/v1/categories/:categoryId` | Admin | `image` | 1 file, 5 MiB |
+| `POST /api/v1/banners` | Admin | `image` (required) | 1 file, 5 MiB |
+| `PATCH /api/v1/banners/:bannerId` | Admin | `image` (optional replacement) | 1 file, 5 MiB |
 
 Accepted input formats are JPEG (`.jpg`/`.jpeg`), PNG, and WebP. The extension, MIME type, binary signature, and decoded format must agree. Only static images are accepted. All accepted images are re-encoded as WebP, with orientation applied and metadata removed. Output must also fit the field's byte limit.
 
@@ -27,6 +29,7 @@ The middleware converts only declared fields before running the existing strict 
 - Product: `price`, `compareAtPrice`, and `stock` are numeric strings; `isActive` is exactly `true` or `false`; `compareAtPrice` may be `null`; a URL-only `images` field is a JSON array.
 - Category: `sortOrder` is a numeric string; `isActive` is exactly `true` or `false`; `parent` may be `null` on update.
 - Profile: `address` is a JSON array; `phone` and `gender` may be `null`.
+- Banner: `sortOrder` is numeric; `isActive` is exactly `true` or `false`; `startsAt`, `endsAt`, and `linkUrl` may be `null`. Banner images must be uploaded files, never text URLs. JSON metadata-only updates are supported.
 
 Other text fields remain strings. Unknown fields, duplicate scalar fields, bracket-style field names, malformed JSON, invalid primitives, and unexpected file fields are rejected. Nested objects must be encoded in their declared JSON field, not as bracket notation. Normal module validation still determines whether a field is permitted on create or update.
 

@@ -153,6 +153,8 @@ orderSchema.pre('validate', function () {
   }
 });
 orderSchema.index({ status: 1, createdAt: -1, _id: -1 });
+orderSchema.index({ createdAt: -1, _id: -1 });
+orderSchema.index({ 'payment.status': 1, 'payment.paidAt': 1, status: 1 });
 orderSchema.index(
   { user: 1, idempotencyKey: 1 },
   {

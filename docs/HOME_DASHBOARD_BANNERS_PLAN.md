@@ -1,8 +1,8 @@
 # Homepage, Dashboard, Banners, and Language Middleware Plan
 
-Status: Proposed; awaiting approval before implementation.
+Status: Implemented. See [API and implementation guide](HOME_DASHBOARD_BANNERS.md) for the final contracts, tests, and limitations.
 
-This plan builds on the existing Express, TypeScript, MongoDB/Mongoose, admin authentication, and shared image upload architecture. Saving this document does not authorize implementation.
+This approved plan was implemented using the existing Express, TypeScript, MongoDB/Mongoose, admin authentication, and shared image upload architecture. The sections below preserve the approved scope.
 
 ## 1. Global language middleware
 
@@ -127,10 +127,10 @@ Revenue uses the existing integer monetary fields, groups currencies separately,
 4. Dashboard APIs.
 5. Tests and documentation.
 
-## Proposed defaults for approval
+## Implemented defaults
 
 - English fallback for missing or unsupported request languages.
 - Percentage-based offer ranking.
 - Paid, non-cancelled orders for sales metrics.
 
-Implementation begins after approval of the plan or incorporation of requested changes.
+Additional requirements implemented: configurable `LOW_STOCK_THRESHOLD` (default 5), positive-price best offers/deal, stored paid order totals grouped by currency/exponent, quantity-based rankings, bounded UTC reporting periods, and no new cache infrastructure. Refund/return data does not exist in the current backend, so external full or partial refunds cannot be detected or subtracted. Reporting explicitly identifies paid sales rather than net accounting revenue; no refund management features or invented refund fields were added.

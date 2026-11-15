@@ -44,8 +44,9 @@ export const paymentService = {
     if (Date.now() - payment.startedAt.getTime() > 23 * 60 * 60 * 1000)
       throw new ConflictException('Payment outcome requires provider reconciliation');
     const body = new URLSearchParams({
-      mode: 'payment', 'payment_method_types[0]': 'card',
-      success_url: payment.successUrl, cancel_url: payment.cancelUrl,
+      mode: 'payment',
+      success_url: payment.successUrl,
+      cancel_url: payment.cancelUrl,
       'metadata[orderId]': orderId, client_reference_id: orderId,
       'line_items[0][quantity]': '1',
       'line_items[0][price_data][currency]': order.currency.toLowerCase(),

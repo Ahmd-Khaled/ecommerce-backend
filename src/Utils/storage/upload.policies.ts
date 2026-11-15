@@ -1,5 +1,10 @@
 import type { UploadPolicy } from './storage.types';
 const MB = 1024 * 1024;
+export const bannerUpload: UploadPolicy = {
+  module: 'banners', param: 'bannerId',
+  fields: [{ name: 'image', folder: 'image', maxCount: 1, maxBytes: 5 * MB }],
+  numbers: ['sortOrder'], booleans: ['isActive'], nullable: ['startsAt', 'endsAt', 'linkUrl'],
+};
 export const avatarUpload: UploadPolicy = {
   module: 'users',
   fields: [{ name: 'avatar', folder: 'avatar', maxCount: 1, maxBytes: 2 * MB }],

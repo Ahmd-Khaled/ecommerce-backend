@@ -116,4 +116,6 @@ For transaction tests, set MONGO_TEST_URI to a disposable replica set and run np
 
 ## Local upload storage
 
+Dashboard inventory uses `LOW_STOCK_THRESHOLD` (default `5`, nonnegative integer). Low stock is strictly above zero and at or below the threshold; zero stock is reported separately. The value is validated at startup. `npm run test:home` covers language, homepage, banners, and dashboard; set `MONGO_TEST_URI` to a disposable replica set to include real database and upload integration tests. See [the module guide](HOME_DASHBOARD_BANNERS.md).
+
 Configure `STORAGE_ROOT` as a persistent application-owned directory and `STORAGE_PUBLIC_URL` as the externally reachable URL ending in `/media`. Use Node.js 22.12+ (tested on 24.21.0). See [FILE_UPLOADS.md](FILE_UPLOADS.md) for all upload limits, request examples, backup requirements, and the single-process-per-storage-root deployment constraint. Run `npm run test:upload` to verify the upload pipeline.

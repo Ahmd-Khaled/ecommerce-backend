@@ -15,7 +15,8 @@
     "dev": "concurrently \"tsc -watch\" \"node --watch dist/index.js\"",
     "test:email": "npm run build && node --test tests/email.queue.test.cjs",
     "test:category": "npm run build && node --test tests/category.*.test.cjs",
-    "test:upload": "npm run build && node --test tests/upload*.test.cjs"
+    "test:upload": "npm run build && node --test tests/upload*.test.cjs",
+    "test:home": "npm run build && node --test tests/home*.test.cjs"
   },
   "keywords": [],
   "author": "",

@@ -1,4 +1,4 @@
-export type StorageModule = 'users' | 'products' | 'categories';
+export type StorageModule = 'users' | 'products' | 'categories' | 'banners';
 export interface StoredFile {
   key: string;
   url: string;

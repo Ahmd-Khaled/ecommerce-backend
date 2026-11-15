@@ -13,6 +13,26 @@ This document describes the HTTP API currently registered by the application. Un
 
 ## Health and media
 
+## Homepage, banners, and dashboard
+
+See [Homepage, dashboard, banners, and request language](HOME_DASHBOARD_BANNERS.md) for fields, metric definitions, examples, pagination, and refund limitations. New module messages and banner selection use `Accept-Language` (`ar`/`en`, default `en`), with `Content-Language` and `Vary: Accept-Language` response headers. Admin routes below use `Authorization: admin <accessToken>`.
+
+| Method and path (under `/api/v1`) | Access | Purpose |
+| --- | --- | --- |
+| `GET /home?view=desktop&limit=8` | Public | Banners, categories, latest products, best offers/deal, best sellers |
+| `GET /home/products?section=latest&page=1&limit=20` | Public | Paginated `latest`, `best-offers`, or `best-sellers` |
+| `GET /banners/list?view=mobile` | Public | Scheduled active banners for header language and view |
+| `GET /banners` | Admin | Paginated management list with language/view/status filters |
+| `GET /banners/:bannerId` | Admin | Banner details |
+| `POST /banners` | Admin | Multipart image and metadata creation |
+| `PATCH /banners/:bannerId` | Admin | JSON metadata or multipart replacement |
+| `DELETE /banners/:bannerId` | Admin | Delete banner and defer image cleanup |
+| `GET /dashboard/overview` | Admin | Current totals and period order/paid-sales metrics |
+| `GET /dashboard/sales` | Admin | UTC daily/monthly paid sales grouped by currency/exponent |
+| `GET /dashboard/top-products` | Admin | Paginated paid quantities and historical item totals |
+
+### Health and media endpoints
+
 | Method and path | Access | Parameters/body | Success |
 |---|---|---|---|
 | `GET /test` | Public | None | `200 { "status": true, "message": "Hello World" }` |

@@ -19,6 +19,8 @@ These guides describe the code as implemented, including incomplete modules and 
 
 ## Existing documents
 
+- [Homepage, dashboard, banners, and request language](HOME_DASHBOARD_BANNERS.md): public home sections, banner uploads/scheduling, admin analytics, language headers, and reporting limitations.
+
 - [Cart implementation and deployment notes](CART.md).
 - [Email queue operations](EMAIL_QUEUE.md).
 - [Earlier category checklist](TODO.md): preserved project history; some statements about pending work are outdated. Use CATEGORY.md and source code for current behavior.

@@ -6,7 +6,7 @@ import { storageConfig } from './storage.config';
 import type { FileStorage, StoredFile } from './storage.types';
 
 export const keyPattern =
-  /^(users\/[a-f0-9]{24}\/avatar|products\/[a-f0-9]{24}\/images|categories\/[a-f0-9]{24}\/image)\/[a-f0-9-]{36}\.webp$/;
+  /^(users\/[a-f0-9]{24}\/avatar|products\/[a-f0-9]{24}\/images|categories\/[a-f0-9]{24}\/image|banners\/[a-f0-9]{24}\/image)\/[a-f0-9-]{36}\.webp$/;
 
 // The storage directory must be writable only by the application OS account.
 // Check every existing ancestor, including junctions on Windows, before access.
