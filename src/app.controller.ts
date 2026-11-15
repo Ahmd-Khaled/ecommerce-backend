@@ -163,3 +163,6 @@ export const bootstrap = async (): Promise<Server> => {
 
 // docker compose up -d
 // npm run dev
+
+// In Powershell
+// stripe listen --forward-to localhost:4000/api/v1/payments/webhook --all-snapshot
