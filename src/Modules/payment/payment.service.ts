@@ -84,7 +84,7 @@ export const paymentService = {
         // Completed but unpaid sessions may still be awaiting an asynchronous payment result.
         await OrderModel.updateOne(
           { _id: orderId, 'payment.key': key, 'payment.sessionId': existingSession.id, 'payment.status': { $ne: 'paid' } },
-          { $unset: { 'payment.checkoutUrl': 1 } },
+          { $set: { 'payment.status': 'pending' }, $unset: { 'payment.checkoutUrl': 1 } },
         ).exec();
         const latest = await OrderModel.findOne({ _id: orderId, user }).exec();
         if (!latest) throw new NotFoundException('Order not found');
