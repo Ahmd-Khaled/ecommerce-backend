@@ -15,6 +15,10 @@ export interface IProduct {
   // Available inventory quantity.
   stock: number;
 
+  /** Sum and count of published product reviews. */
+  ratingsSum: number;
+  ratingsCount: number;
+
   // Product images.
   images: string[];
 

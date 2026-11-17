@@ -50,6 +50,8 @@ Cart configuration is checked at startup. JWT configuration is checked when cred
 | `npm run test:cart` | Build, cart unit/integration files, checkout unit tests |
 | `npm run test:category` | Build and category tests |
 | `npm run test:email` | Build and email processor tests |
+| `npm run test:review` | Review validation/model checks and replica-set transaction integration; absent `MONGO_TEST_URI` is explicitly reported as skipped |
+| `npm run audit:reviews` | Dry-run reconciliation of product counters against published reviews |
 | `npm run dev` | Initial build plus compiler/server watchers |
 
 There is no lint script or lint configuration in the current project. Tests use Node's built-in runner, assertions, and mocking. They import compiled dist files, which is why scripts build first.
@@ -113,6 +115,8 @@ npm run audit:orders
 Use the intended database explicitly. Resolve reported invalid products/duplicate checkout keys before rollout; review legacy orders manually. The command does not migrate records or establish their historical currency.
 
 For transaction tests, set MONGO_TEST_URI to a disposable replica set and run npm test. Suites create/drop uniquely named test databases. See [ORDER.md](ORDER.md) for the breaking checkout contract and client rollout steps.
+
+Review counter reconciliation requires `MONGO_AUDIT_URI` set explicitly to the intended database. `npm run audit:reviews` is read-only by default; pass `-- --apply` only after reviewing its report to repair `ratingsSum` and `ratingsCount`. Review mutations require transaction-capable MongoDB. Bootstrap creates review indexes and the default manual-approval setting before listening.
 
 ## Local upload storage
 

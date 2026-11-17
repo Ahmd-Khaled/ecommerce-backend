@@ -117,6 +117,27 @@ Public list filters (also used by admin product list): `page` (default 1), `limi
 | `PATCH /products/:productId` | Admin | JSON or multipart; any nonempty subset of create fields, plus `isActive` boolean. `compareAtPrice` may be null. Multipart supports up to 10 `images` files. | `200 { success, message, data: { product } }` |
 | `DELETE /products/:productId` | Admin | Product ID | `200 { success, message }` |
 
+Product responses include `ratingsAverage` and `ratingsCount` from published reviews only; the internal `ratingsSum` is not serialized.
+
+### Product reviews
+
+All review cursors are opaque base64url values. `limit` defaults to 20 and is capped at 100. Lists are ordered by `createdAt` and `_id`, newest first. Reviews require an order with status `delivered`; each customer can review a product once. Ratings are integer 1–5 and optional text is limited to 2,000 characters. Approval defaults to manual, so new reviews are pending until an admin publishes them.
+
+| Method and path | Access | Request | Success |
+|---|---|---|---|
+| `GET /products/:productId/reviews` | Public | `limit?`, `after?` | Published reviews, safe first-name/avatar display, rating average/count, next cursor; active products only |
+| `POST /products/:productId/reviews` | USER | `{ rating, text? }` | `201` created review; state is pending or published per dashboard setting |
+| `GET /products/reviews/me` | USER | `limit?`, `after?` | Own reviews in all states, including hidden and removed |
+| `PATCH /products/reviews/me/:reviewId` | USER | `{ rating?, text? }`, at least one | Update own non-removed review; hidden stays hidden; published review requeues in manual mode |
+| `DELETE /products/reviews/me/:reviewId` | USER | None | Withdraw own review to retained removed state |
+| `GET /admin/reviews` | Admin | `productId?`, `state?`, `queue=new?`, `limit?`, `after?` | Filtered moderation list and next cursor |
+| `PATCH /admin/reviews/:reviewId/state` | Admin | `{ state: published\|hidden\|removed, reason? }` | Moderation transition; admin cannot change rating or text |
+| `PATCH /admin/reviews/:reviewId/restore` | SUPER_ADMIN | `{ reason? }` | Restore removed tombstone to hidden |
+| `GET /admin/reviews/settings` | Admin | None | `{ autoApproveReviews }` |
+| `PATCH /admin/reviews/settings` | Admin | `{ autoApproveReviews: boolean }` | Updated durable approval setting |
+
+Every lifecycle transition and associated `ratingsSum`/`ratingsCount` delta is committed in one MongoDB transaction. Product archival and user soft deletion retain reviews and counters. See [Product reviews](PRODUCT_REVIEWS_IMPLEMENTATION_PLAN.md) for lifecycle transitions, audit, transaction guarantees, reconciliation, and deployment.
+
 ## Categories — `/categories`
 
 Public category filters: `search` (1–100 chars), `slug`, `page` (default 1), `limit` (default 20, max 100), `sortBy` (`name`, `sortOrder`, `createdAt`; default `sortOrder`), `sortOrder` (`asc` or `desc`; default `asc`). Public queries reject unknown filters.

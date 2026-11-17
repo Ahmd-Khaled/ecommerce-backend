@@ -3,6 +3,7 @@ import { uploadRoute, uploadLimiter } from '../../Middlewares/upload.middlewares
 import { productUpload } from '../../Utils/storage/upload.policies';
 
 import { productController } from './product.controller';
+import { customerReviewRouter } from '../review/review.routes';
 
 import {
   publicProductListSchema,
@@ -21,6 +22,9 @@ import { adminAuthentication } from '../admin/admin.authorization';
 
 
 const router = Router();
+
+// Customer review paths precede the product-ID routes and admin authentication.
+router.use(customerReviewRouter);
 
 /**
  * Public routes

@@ -6,6 +6,7 @@ import { adminAuthentication } from './admin.authorization';
 import { adminController } from './admin.controller';
 import { adminRefreshSchema } from './admin.validation';
 import { userRouter } from '../user/user.routes';
+import { adminReviewRouter } from '../review/review.routes';
 
 export const adminRouter = Router();
 adminRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -17,6 +18,7 @@ adminRouter.get('/auth/profile', adminAuthentication(), adminController.profile)
 adminRouter.patch('/auth/profile', adminAuthentication(), adminController.updateProfile);
 adminRouter.patch('/auth/change-password', loginLimiter, adminAuthentication(), adminController.changePassword);
 adminRouter.use('/users', userRouter);
+adminRouter.use('/reviews', adminReviewRouter);
 adminRouter.use(adminAuthentication([AdminRoleEnum.SUPER_ADMIN]));
 adminRouter.get('/', adminController.list);
 adminRouter.post('/', adminController.create);

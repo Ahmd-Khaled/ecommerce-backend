@@ -4,6 +4,8 @@ Source: [routes](../src/Modules/product/product.routes.ts), [validation](../src/
 
 Prefix: `/api/v1/products`. Products hold catalog data, current selling price, stock, category reference, and active status. Cart lines store references and quantities; they do not duplicate catalog prices.
 
+Product responses expose `ratingsAverage` and `ratingsCount`, calculated from published reviews only. `ratingsSum` is an internal authoritative counter omitted from API serialization. Review lifecycle, moderation, APIs, and deployment details are covered in [the review plan](PRODUCT_REVIEWS_IMPLEMENTATION_PLAN.md).
+
 ## Every route
 
 | Method and suffix | Access/input | Controller -> service -> repository | Success response |

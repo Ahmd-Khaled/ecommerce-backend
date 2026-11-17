@@ -1,4 +1,4 @@
-import { Query, model, models, Schema } from 'mongoose';
+import { Query, model, models, Schema, type Model } from 'mongoose';
 
 import { IProduct } from './product.interface';
 
@@ -81,6 +81,20 @@ const productSchema = new Schema<IProduct>(
       },
     },
 
+    ratingsSum: {
+      type: Number,
+      default: 0,
+      min: 0,
+      validate: Number.isSafeInteger,
+    },
+
+    ratingsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      validate: Number.isSafeInteger,
+    },
+
     images: {
       type: [String],
       required: [true, 'Product images are required'],
@@ -113,8 +127,19 @@ const productSchema = new Schema<IProduct>(
   {
     timestamps: true,
     versionKey: false,
+    toJSON: {
+      virtuals: true,
+      transform: (_doc, ret) => {
+        delete (ret as Record<string, unknown>).ratingsSum;
+        return ret;
+      },
+    },
   },
 );
+
+productSchema.virtual('ratingsAverage').get(function () {
+  return this.ratingsCount ? Math.round((this.ratingsSum / this.ratingsCount) * 100) / 100 : 0;
+});
 
 // Indexes for common queries.
 productSchema.index({ category: 1, isActive: 1 });
@@ -132,4 +157,4 @@ productSchema.pre('validate', function () {
   }
 });
 
-export const ProductModel = models.Product || model<IProduct>('Product', productSchema);
+export const ProductModel = (models.Product as Model<IProduct> | undefined) ?? model<IProduct>('Product', productSchema);

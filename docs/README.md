@@ -13,9 +13,10 @@ These guides describe the code as implemented, including incomplete modules and 
 5. [Authentication APIs](AUTH.md): registration, verification, sessions, profiles, and password recovery.
 6. [Category APIs](CATEGORY.md): hierarchy, public visibility, administration, and product counts.
 7. [Product APIs](PRODUCT.md): catalog browsing, validation, pricing, and management.
-8. [Cart APIs](CART_MODULE.md): item operations, current prices, limits, and concurrency.
-9. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
-10. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
+8. [Product reviews implementation plan](PRODUCT_REVIEWS_IMPLEMENTATION_PLAN.md): review lifecycle, moderation policy, and transaction design.
+9. [Cart APIs](CART_MODULE.md): item operations, current prices, limits, and concurrency.
+10. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
+11. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
 
 ## Existing documents
 
@@ -49,6 +50,8 @@ These guides describe the code as implemented, including incomplete modules and 
 | `/api/v1/addresses` | Implemented; USER access required | [API reference](API.md), [Address](ADDRESS.md) |
 | `/api/v1/categories` | Implemented public and admin APIs | [Category](CATEGORY.md) |
 | `/api/v1/products` | Implemented public and admin APIs | [Product](PRODUCT.md) |
+| `/api/v1/products/*/reviews` | Public reviews and customer review APIs | [Product](PRODUCT.md) |
+| `/api/v1/admin/reviews` | Review moderation and approval settings | [Product](PRODUCT.md) |
 | `/api/v1/cart` | Implemented; USER access required | [Cart](CART_MODULE.md) |
 | `/api/v1/orders` | Checkout, history, details, admin fulfillment, cancellation | [Order](ORDER.md) |
 | `/api/v1/users` | Admin user management mounted under `/admin/users` | [API reference](API.md), [User](USER.md) |

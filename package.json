@@ -16,7 +16,9 @@
     "test:email": "npm run build && node --test tests/email.queue.test.cjs",
     "test:category": "npm run build && node --test tests/category.*.test.cjs",
     "test:upload": "npm run build && node --test tests/upload*.test.cjs",
-    "test:home": "npm run build && node --test tests/home*.test.cjs"
+    "test:home": "npm run build && node --test tests/home*.test.cjs",
+    "test:review": "npm run build && node --test tests/review*.test.cjs",
+    "audit:reviews": "npm run build && node scripts/reviews-reconcile.cjs"
   },
   "keywords": [],
   "author": "",

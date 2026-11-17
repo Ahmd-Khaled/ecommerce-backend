@@ -6,6 +6,8 @@ import { dashboardRouter } from './Modules/dashboard/dashboard.routes';
 import { lowStockThreshold } from './Modules/dashboard/dashboard.config';
 import { BannerModel } from './DB/models/banner/banner.model';
 import { ProductModel } from './DB/models/product/product.model';
+import { ReviewModel } from './DB/models/review/review.model';
+import { reviewSettingsRepository } from './DB/repository/review-settings.repository';
 import { AdminModel } from './DB/models/admin/admin.model';
 import { mediaRouter } from './Utils/storage/storage.service';
 import { storageConfig } from './Utils/storage/storage.config';
@@ -82,7 +84,15 @@ export const bootstrap = async (): Promise<Server> => {
   await OrderModel.init();
   await OrderModel.createIndexes();
   await BannerModel.createIndexes();
+  // Existing product documents predate review counters; initialize them before review writes.
+  await ProductModel.updateMany(
+    { $or: [{ ratingsSum: { $exists: false } }, { ratingsCount: { $exists: false } }] },
+    { $set: { ratingsSum: 0, ratingsCount: 0 } },
+  ).exec();
   await ProductModel.createIndexes();
+  await reviewSettingsRepository.initialize();
+  await ReviewModel.init();
+  await ReviewModel.createIndexes();
   await startEmailQueue();
 
   // ==========================================
