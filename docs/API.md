@@ -119,6 +119,19 @@ Public list filters (also used by admin product list): `page` (default 1), `limi
 
 Product responses include `ratingsAverage` and `ratingsCount` from published reviews only; the internal `ratingsSum` is not serialized.
 
+### Wishlist / favorites
+
+See [Wishlist / Favorites](WISHLIST.md) for data and consistency details. All wishlist routes require a USER access token. The per-user limit defaults to 500 (`WISHLIST_MAX_ITEMS`).
+
+| Method and path | Access | Request | Success |
+|---|---|---|---|
+| `GET /wishlist?limit=20&after=<cursor>` | USER | Limit 1-100; opaque cursor optional | Current active favorite products and next cursor |
+| `POST /wishlist/items` | USER | Strict `{ productId }` | 201 inserted, 200 already present |
+| `GET /wishlist/items/:productId` | USER | Product ID | `{ isFavorited }` |
+| `DELETE /wishlist/items/:productId` | USER | Product ID | Idempotent success |
+
+Authenticated USER product list and detail responses add `isFavorited`; anonymous response fields are unchanged and list membership is queried in one batch.
+
 ### Product reviews
 
 All review cursors are opaque base64url values. `limit` defaults to 20 and is capped at 100. Lists are ordered by `createdAt` and `_id`, newest first. Reviews require an order with status `delivered`; each customer can review a product once. Ratings are integer 1–5 and optional text is limited to 2,000 characters. Approval defaults to manual, so new reviews are pending until an admin publishes them.

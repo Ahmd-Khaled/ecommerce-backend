@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
+import { logContext } from '../logging/context';
+import { logger } from '../logging/logger';
 
 export interface IError extends Error {
   statusCode: number;
@@ -48,6 +50,14 @@ export const globalErrorHandler = (
   res: Response,
   next: NextFunction,
 ) => {
+  const context = logContext.getStore();
+  if (context && !context.errorCode) {
+    const status = err.statusCode || 500;
+    context.errorCode = status >= 500 ? 'INTERNAL_ERROR' : `HTTP_${status}`;
+    logger.write({ kind: 'operational', action: 'http.error', level: status >= 500 ? 'error' : 'warn',
+      outcome: [401, 403, 429].includes(status) ? 'denied' : 'failure' });
+  }
+  if (res.headersSent) return next(err);
   return res.status(err.statusCode || 500).json({
     message: err.message || 'Something went wrong',
     stack: process.env.MODE === 'DEV' ? err.stack : undefined,

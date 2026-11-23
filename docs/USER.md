@@ -1,5 +1,7 @@
 # User module and account data
 
+For a combined explanation of how User, Admin, and auth models/modules relate, see [User, Admin, and Authentication Relationships](Relations/auth-user-admin-relations.md).
+
 The [User module](../src/Modules/user) manages customers with `user` and `guest` roles. Administrator identities are stored separately; see [Admin](ADMIN.md).
 
 ## What a request does today

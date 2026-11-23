@@ -15,8 +15,9 @@ These guides describe the code as implemented, including incomplete modules and 
 7. [Product APIs](PRODUCT.md): catalog browsing, validation, pricing, and management.
 8. [Product reviews implementation plan](PRODUCT_REVIEWS_IMPLEMENTATION_PLAN.md): review lifecycle, moderation policy, and transaction design.
 9. [Cart APIs](CART_MODULE.md): item operations, current prices, limits, and concurrency.
-10. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
-11. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
+10. [Wishlist / favorites](WISHLIST.md): customer favorites, pagination, capacity, and product integration.
+11. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
+12. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
 
 ## Existing documents
 
@@ -53,6 +54,7 @@ These guides describe the code as implemented, including incomplete modules and 
 | `/api/v1/products/*/reviews` | Public reviews and customer review APIs | [Product](PRODUCT.md) |
 | `/api/v1/admin/reviews` | Review moderation and approval settings | [Product](PRODUCT.md) |
 | `/api/v1/cart` | Implemented; USER access required | [Cart](CART_MODULE.md) |
+| `/api/v1/wishlist` | Implemented; USER access required | [Wishlist](WISHLIST.md) |
 | `/api/v1/orders` | Checkout, history, details, admin fulfillment, cancellation | [Order](ORDER.md) |
 | `/api/v1/users` | Admin user management mounted under `/admin/users` | [API reference](API.md), [User](USER.md) |
 | `/api/v1/payments` | Stripe checkout, status, and webhook handlers | [API reference](API.md), [Payment](PAYMENT.md) |
@@ -61,3 +63,11 @@ These guides describe the code as implemented, including incomplete modules and 
 API examples use fictitious IDs. Replace them with records from your database. Authorization is `user <token>` or `admin <token>` in this project; it is not the usual `Bearer` scheme.
 
 - [Shared image uploads](FILE_UPLOADS.md): multipart APIs, security checks, local storage configuration, and cleanup.
+- [Authentication implementation reference](auth/README.md): auth files, JWT and revocation records, repository behavior, and relations to User.
+- [User model and module reference](user/README.md): User schema, repository, admin management, and account flows.
+- [Admin model and module reference](admin/README.md): Admin schema, authentication, super-admin management, and shared token revocation.
+- [Product model and module reference](product/README.md): Product schema/repository, catalog service, and category, inventory, media, and review relationships.
+- [Category model and module reference](category/README.md): Category schema/repository, hierarchy transactions, visibility rules, counts, and product relationships.
+- [User, Admin, and Auth relationships](Relations/auth-user-admin-relations.md): identity collections, authentication boundaries, shared token revocation, and session invalidation.
+- [Full authentication lifecycle](auth/authentication-lifecycle.md): end-to-end customer signup, verification, sessions, recovery, and Google flows.
+- [Cart model and module reference](cart/README.md): Cart schema/repository/service, concurrency, product availability, money totals, and checkout handoff.

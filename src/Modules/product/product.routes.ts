@@ -17,11 +17,18 @@ import {
 import { validations } from '../../Middlewares/validation.middlewares';
 
 import { adminAuthentication } from '../admin/admin.authorization';
+import { authentication } from '../../Middlewares/authentication.middlewares';
+import { TokenTypeEnum } from '../../Utils/security/token';
+import { RoleEnum } from '../../DB/models/user/user.interface';
 
 
 
 
 const router = Router();
+const optionalCustomer = (req: any, res: any, next: any) => {
+  if (!req.headers.authorization) return next();
+  return authentication(TokenTypeEnum.ACCESS, [RoleEnum.USER])(req, res, next);
+};
 
 // Customer review paths precede the product-ID routes and admin authentication.
 router.use(customerReviewRouter);
@@ -31,12 +38,13 @@ router.use(customerReviewRouter);
  */
 
 // GET /api/v1/products/list
-router.get('/list', validations(publicProductListSchema), productController.getPublicProducts);
+router.get('/list', optionalCustomer, validations(publicProductListSchema), productController.getPublicProducts);
 
 // GET /api/v1/products/slug/:slug
 // Keep this route before parameterized product routes.
 router.get(
   '/slug/:slug',
+  optionalCustomer,
   validations({ params: productSlugSchema }),
   productController.getProductBySlug,
 );
@@ -44,6 +52,7 @@ router.get(
 // GET /api/v1/products/category/:categoryId
 router.get(
   '/category/:categoryId',
+  optionalCustomer,
   validations(productCategoryIdSchema),
   validations(publicProductListSchema),
   productController.getProductsByCategory,
@@ -52,6 +61,7 @@ router.get(
 // GET /api/v1/products/:productId
 router.get(
   '/:productId',
+  optionalCustomer,
   validations({ params: productIdSchema }),
   productController.getProductById,
 );

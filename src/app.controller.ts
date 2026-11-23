@@ -1,4 +1,6 @@
 import { adminRouter } from './Modules/admin/admin.routes';
+import { requestLogging } from './Middlewares/request-logging.middlewares';
+import { logger } from './Utils/logging/logger';
 import { languageMiddleware } from './Middlewares/language.middlewares';
 import { bannerRouter } from './Modules/banner/banner.routes';
 import { homeRouter } from './Modules/home/home.routes';
@@ -33,8 +35,10 @@ import { paymentRouter } from './Modules/payment/payment.routes';
 import { productRouter } from './Modules/product/product.routes';
 import { userRouter } from './Modules/user/user.routes';
 import { cartRouter } from './Modules/cart/cart.routes';
+import { wishlistRouter } from './Modules/wishlist/wishlist.routes';
 import { addressRouter } from './Modules/address/address.routes';
 import { CartModel } from './DB/models/cart/cart.model';
+import { WishlistModel, WishlistItemModel } from './DB/models/wishlist/wishlist.model';
 import { OrderModel } from './DB/models/order/order.model';
 import { cartLimits } from './Modules/cart/cart.config';
 import { storeMoney } from './Utils/money';
@@ -64,6 +68,7 @@ export const bootstrap = async (): Promise<Server> => {
   // Global Middleware
   // ==========================================
 
+  app.use(requestLogging);
   app.use(cors(corsOptions()));
   app.use(helmet());
   app.use(cookieParser());
@@ -80,6 +85,8 @@ export const bootstrap = async (): Promise<Server> => {
   await connectDB();
   // Cart creation safety requires the unique index before accepting traffic.
   await CartModel.createIndexes();
+  await WishlistModel.createIndexes();
+  await WishlistItemModel.createIndexes();
   await AdminModel.init();
   await OrderModel.init();
   await OrderModel.createIndexes();
@@ -122,6 +129,7 @@ export const bootstrap = async (): Promise<Server> => {
 
   // Cart: item references, quantities, and selected options.
   app.use('/api/v1/cart', cartLimiter, express.json({ limit: '50kb' }), cartRouter);
+  app.use('/api/v1/wishlist', usersLimiter, express.json({ limit: '10kb' }), wishlistRouter);
 
   // Orders: line items, shipping details, and checkout metadata.
   app.use('/api/v1/orders', ordersLimiter, express.json({ limit: '100kb' }), ordersRouter);
@@ -162,7 +170,7 @@ export const bootstrap = async (): Promise<Server> => {
   // ==========================================
 
   const httpServer = app.listen(port, () => {
-    console.log(`E-Commerce Backend Server is running on ${process.env.DEPLOYEDDOMAIN}:${port}`);
+    logger.write({ kind: 'operational', action: 'application.started', level: 'info', outcome: 'success' });
   });
 
   httpServer.requestTimeout = 120000;

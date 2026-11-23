@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { setVerifiedActor } from '../../Utils/logging/context';
 import { AdminRoleEnum, type HAdminDocument } from '../../DB/models/admin/admin.interface';
 import { ForbiddenException, UnauthorizedException } from '../../Utils/response/error.response';
 import { decodedAdminToken } from './admin.token';
@@ -12,6 +13,7 @@ export const adminAuthentication = (roles = Object.values(AdminRoleEnum)): Reque
   const { admin, decoded } = await decodedAdminToken(req.headers.authorization);
   // console.log("-----------------decoded token", admin, decoded);
   requireAdmin(admin);
+  setVerifiedActor({ type: 'admin', id: String(admin._id), identityModel: 'Admin', role: admin.role });
   if (!roles.includes(admin.role)) throw new ForbiddenException('Unauthorized Access');
   req.admin = admin;
   req.decoded = decoded;

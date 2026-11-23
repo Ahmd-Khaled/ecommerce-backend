@@ -1,5 +1,9 @@
 # Authentication module
 
+For the cross-identity view of customer and administrator authentication, shared Token records, and session invalidation, see [User, Admin, and Authentication Relationships](Relations/auth-user-admin-relations.md).
+
+For a deeper file-by-file explanation of the auth service, JWT/cookie lifecycle, Token collection, repositories, and relationships to User, see the [Authentication implementation reference](auth/README.md).
+
 Source: [routes](../src/Modules/auth/auth.routes.ts), [validation](../src/Modules/auth/auth.validation.ts), [DTOs](../src/Modules/auth/auth.dto.ts), [controller](../src/Modules/auth/auth.controller.ts), [service](../src/Modules/auth/auth.service.ts), [user repository](../src/DB/repository/user.repository.ts), [user model](../src/DB/models/user/user.model.ts), [token utilities](../src/Utils/security/token.ts).
 
 Prefix: `/api/v1/auth`. All endpoints share the auth IP budget. Public below means no login token is required, not unlimited requests. Unless noted, successful operations return 200.
