@@ -1,5 +1,9 @@
 # Administrator identity and management
 
+For the cross-identity view of User and Admin collections, auth boundaries, shared Token revocations, and session invalidation, see [User, Admin, and Authentication Relationships](Relations/auth-user-admin-relations.md).
+
+For a file-by-file explanation of the Admin model, auth and management services, repositories, role guards, JWT/cookie behavior, and relation to User and shared Token records, see the [Admin implementation reference](admin/README.md).
+
 Administrators live in the `admins` collection and have `admin` or `super-admin` roles. Customers live in `users` and have `user` or `guest` roles. An email may independently exist in both collections. There is no public admin registration, Google login, or customer-to-admin promotion endpoint.
 
 ## Authentication

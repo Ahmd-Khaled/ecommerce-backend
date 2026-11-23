@@ -1,10 +1,14 @@
 # Product module
 
+For a file-by-file explanation of Product fields/hooks/indexes, repository and service behavior, uploads, and links to categories, cart, wishlist, orders, and reviews, see the [Product implementation reference](product/README.md).
+
 Source: [routes](../src/Modules/product/product.routes.ts), [validation](../src/Modules/product/product.validation.ts), [DTOs](../src/Modules/product/product.dto.ts), [controller](../src/Modules/product/product.controller.ts), [service](../src/Modules/product/product.service.ts), [repository](../src/DB/repository/product.repository.ts), [model](../src/DB/models/product/product.model.ts).
 
 Prefix: `/api/v1/products`. Products hold catalog data, current selling price, stock, category reference, and active status. Cart lines store references and quantities; they do not duplicate catalog prices.
 
 Product responses expose `ratingsAverage` and `ratingsCount`, calculated from published reviews only. `ratingsSum` is an internal authoritative counter omitted from API serialization. Review lifecycle, moderation, APIs, and deployment details are covered in [the review plan](PRODUCT_REVIEWS_IMPLEMENTATION_PLAN.md).
+
+When a valid USER access token is supplied on public list, detail, category, or slug views, responses include `isFavorited`. List membership is loaded in a single batch query for the page. Anonymous product responses retain their existing contract. See [Wishlist](WISHLIST.md).
 
 ## Every route
 

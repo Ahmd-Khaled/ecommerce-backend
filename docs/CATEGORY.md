@@ -1,5 +1,7 @@
 # Category module
 
+For a file-by-file explanation of the Category model, hierarchy transaction guard, routes, repository and service rules, product counts, visibility ancestry, and product relationships, see the [Category implementation reference](category/README.md).
+
 Source: [routes](../src/Modules/category/category.routes.ts), [validation](../src/Modules/category/category.validation.ts), [controller](../src/Modules/category/category.controller.ts), [service](../src/Modules/category/category.service.ts), [repository](../src/DB/repository/category.repository.ts), [model](../src/DB/models/category/category.model.ts).
 
 Prefix: `/api/v1/categories`. Categories are a hierarchy: a root has no `parent`, and a child stores another category's ObjectId. The public storefront only shows active categories connected through active ancestors to a root. Admin reads can include inactive categories.

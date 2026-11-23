@@ -1,5 +1,7 @@
 # Cart module: API walkthrough
 
+For a deeper explanation of the Cart model, repository, mutation concurrency, Product checks, totals, and checkout relationship, see the [Cart implementation reference](cart/README.md).
+
 Source: [routes](../src/Modules/cart/cart.routes.ts), [validation](../src/Modules/cart/cart.validation.ts), [DTOs](../src/Modules/cart/cart.dto.ts), [controller](../src/Modules/cart/cart.controller.ts), [service](../src/Modules/cart/cart.service.ts), [limits](../src/Modules/cart/cart.config.ts), [repository](../src/DB/repository/cart.repository.ts), [model](../src/DB/models/cart/cart.model.ts).
 
 Prefix: `/api/v1/cart`. Every route requires an access token with the USER role. The owner is always `req.user._id`; callers do not submit a user ID. An ADMIN token does not satisfy this router's USER-only role list.

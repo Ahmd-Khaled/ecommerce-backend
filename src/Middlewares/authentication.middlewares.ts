@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { setVerifiedActor } from '../Utils/logging/context';
 
 import { type HUserDocument, RoleEnum } from '../DB/models/user/user.interface';
 
@@ -22,6 +23,7 @@ export const authentication = (
       tokenType,
     });
 
+    setVerifiedActor({ type: 'user', id: String(user._id), identityModel: 'User', role: user.role });
     // Apply role restrictions only when roles are provided.
     if (!Object.values(RoleEnum).includes(user.role) || (accessRoles.length > 0 && !accessRoles.includes(user.role))) {
       throw new ForbiddenException('Unauthorized Access');

@@ -1,6 +1,7 @@
 import { bootstrap } from './app.controller';
 import mongoose from 'mongoose';
 import { closeEmailQueue } from './Utils/email/email.queue';
+import { logger } from './Utils/logging/logger';
 
 const startServer = async () => {
   try {
@@ -19,14 +20,14 @@ const startServer = async () => {
         await mongoose.disconnect();
         clearTimeout(deadline);
       } catch (error) {
-        console.error('Application shutdown failed:', error);
+        logger.write({ kind: 'operational', action: 'application.stop_failed', level: 'error', outcome: 'failure' });
         process.exit(1);
       }
     };
     process.once('SIGTERM', () => void shutdown());
     process.once('SIGINT', () => void shutdown());
   } catch (error) {
-    console.error('Application startup failed:', error);
+    logger.write({ kind: 'operational', action: 'application.start_failed', level: 'error', outcome: 'failure' });
     process.exit(1);
   }
 };

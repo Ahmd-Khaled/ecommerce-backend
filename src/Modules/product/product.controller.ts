@@ -1,4 +1,7 @@
 import type { RequestHandler } from 'express';
+import { Types } from 'mongoose';
+import { wishlistRepository } from '../../DB/repository/wishlist.repository';
+import { RoleEnum } from '../../DB/models/user/user.interface';
 import { uploadId, uploadExpected } from '../../Middlewares/upload.middlewares';
 
 import { productService } from './product.service';
@@ -55,6 +58,10 @@ class ProductController {
    */
   getPublicProducts: RequestHandler = async (req, res): Promise<void> => {
     const data = await productService.getProducts(req.query as unknown as GetProductsDTO);
+    if (req.user?.role === RoleEnum.USER) {
+      const favorites = await wishlistRepository.productIds(req.user._id, data.products.map((product) => product._id as Types.ObjectId));
+      (data as any).products = data.products.map((product) => ({ ...product.toJSON(), isFavorited: favorites.has(String(product._id)) }));
+    }
 
     res.status(200).json({
       success: true,
@@ -71,11 +78,14 @@ class ProductController {
     const { productId } = req.params;
 
     const product = await productService.getActiveProductById(productId);
+    const responseProduct = req.user?.role === RoleEnum.USER
+      ? { ...product.toJSON(), isFavorited: await wishlistRepository.has(req.user._id, product._id) }
+      : product;
 
     res.status(200).json({
       success: true,
       message: 'Product retrieved successfully',
-      data: { product },
+      data: { product: responseProduct },
     });
   };
 
@@ -87,11 +97,14 @@ class ProductController {
     const { slug } = req.params;
 
     const product = await productService.getProductBySlug(slug);
+    const responseProduct = req.user?.role === RoleEnum.USER
+      ? { ...product.toJSON(), isFavorited: await wishlistRepository.has(req.user._id, product._id) }
+      : product;
 
     res.status(200).json({
       success: true,
       message: 'Product retrieved successfully',
-      data: { product },
+      data: { product: responseProduct },
     });
   };
 
