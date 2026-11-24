@@ -19,7 +19,11 @@ These guides describe the code as implemented, including incomplete modules and 
 11. [Order APIs](ORDER.md): checkout from HTTP request to inventory transaction.
 12. [Shared middleware and utilities](INFRASTRUCTURE.md): authentication, errors, rate limiting, email, and security helpers.
 
+- [Frontend and dashboard logging integration plan](FRONTEND_LOGGING_IMPLEMENTATION_PLAN.md): request-ID correlation, safe client errors, and the future admin audit viewer boundary.
+
 ## Existing documents
+
+- [Whole-project review plan](PROJECT_REVIEW_PLAN.md): review method, starting point, module order, severity rubric, and verification approach.
 
 - [Homepage, dashboard, banners, and request language](HOME_DASHBOARD_BANNERS.md): public home sections, banner uploads/scheduling, admin analytics, language headers, and reporting limitations.
 
