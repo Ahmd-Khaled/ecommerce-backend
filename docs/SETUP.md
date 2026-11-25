@@ -19,7 +19,9 @@ Both MongoDB and the email queue must be ready before the HTTP server starts lis
 
 | Variable | Used for | Expected value |
 | --- | --- | --- |
-| CORS_ORIGINS | Credentialed browser origin allowlist | Comma-separated exact origins; see AUTH_COOKIES.md |
+| LOG_STDOUT_ENABLED | Structured JSON terminal output | Set `false` to mute request/operational JSON output; default enabled. Request IDs and System Logs persistence remain independent. |
+| CORS_ORIGINS | Credentialed browser origin allowlist | Comma-separated exact origins; see AUTH_COOKIES.md. Include every authorized Dashboard origin for each deployment (development, staging, production). Allowed origins receive `Access-Control-Expose-Headers: X-Request-Id` on successful and HTTP-error responses. |
+| SYSTEM_LOGS_ENABLED | Enable System Logs storage and reader | Default disabled; see [System Logs setup](SYSTEM_LOGS.md) for database, cursor secret, retention, Redis and index provisioning requirements |
 | PORT | HTTP listening port | Number; fallback 4000 |
 | MODE | Development error detail and test endpoint | DEV enables development behavior |
 | NODE_ENV | Enables Secure refresh cookies and disables development-only endpoint in production | production for production runtime |

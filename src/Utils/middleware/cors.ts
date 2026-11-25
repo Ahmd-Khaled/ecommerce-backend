@@ -8,6 +8,7 @@ export const corsOptions = (): CorsOptions => {
     .filter(Boolean);
   return {
     credentials: true,
+    exposedHeaders: ['X-Request-Id'],
     origin(origin, callback) {
       if (!origin || origins.includes(origin)) callback(null, true);
       else callback(new ForbiddenException('Origin is not allowed'));

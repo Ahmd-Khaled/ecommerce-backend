@@ -6,6 +6,20 @@ const { createLogger } = require('../dist/Utils/logging/logger');
 const { logContext, setVerifiedActor } = require('../dist/Utils/logging/context');
 const { createRequestLogging } = require('../dist/Middlewares/request-logging.middlewares');
 
+test('muting output preserves request persistence and can be reversed at runtime', () => {
+  const lines = [], events = [];
+  let enabled = false;
+  const output = createLogger({ write(line) { lines.push(line); return true; } }, event => events.push(event), () => enabled);
+  output.write({ kind: 'operational', action: 'application.started', level: 'info', outcome: 'success' });
+  output.write({ kind: 'request', action: 'http.request', level: 'info', outcome: 'success' });
+  assert.equal(lines.length, 0);
+  assert.equal(events.length, 1);
+  assert.equal(output.dropped, 0);
+  enabled = true;
+  output.write({ kind: 'operational', action: 'application.started', level: 'info', outcome: 'success' });
+  assert.equal(lines.length, 1);
+});
+
 test('logging projects safe fields, bounds events, and isolates sink failures', () => {
   const lines = [];
   const logger = createLogger({ write: line => { lines.push(line); return true; } });

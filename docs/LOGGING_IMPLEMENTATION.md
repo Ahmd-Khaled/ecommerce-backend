@@ -39,7 +39,92 @@ Run `npm run build` and `node --test tests/logging.test.cjs` (also included by `
 
 Initial validation: TypeScript build passed; all 3 logging tests passed. The full suite reported 139 passing, 7 skipped and 1 failing test. The unchanged `tests/payment.test.cjs:63` expects a `pending` payment status predicate, while the unchanged payment service uses `{ $in: ['pending', 'expired'] }`. That unrelated mismatch remains unresolved. Database integration tests were skipped; no replica-set transaction guarantee has been verified in this phase.
 
-## Remaining implementation
+## System Logs statistics API
+
+```http
+GET /api/v1/admin/system-logs/statistics
+Authorization: admin <access-token>
+```
+
+Returns aggregate HTTP metrics from the persisted System Logs collection. Requires an active **Super Admin** and `SYSTEM_LOGS_ENABLED=true`. It shares the existing System Logs authentication, rate limits (60/minute per IP and 30/minute per administrator), sanitized errors, `Cache-Control: no-store`, and server-generated `X-Request-Id`. The static `/statistics` route is registered before `/:logId`.
+
+### Query parameters
+
+| Parameter | Default | Validation / meaning |
+| --- | --- | --- |
+| `from` | 24 hours before `to`, bounded by configured retention | ISO timestamp with timezone; inclusive |
+| `to` | Current server time | ISO timestamp with timezone; exclusive; must not be in the future |
+| `method` | All | `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `OTHER` |
+| `route` | All | Exact router-relative template, 1–256 characters, e.g. `/:id`; no regex |
+| `slowThresholdMs` | `1000` | Integer 1–2147483647; requests at or above this duration are slow |
+
+If only `from` is supplied, `to` defaults to now. If only `to` is supplied, use the preceding 24 hours. Reject reversed/empty ranges and spans exceeding configured retention. Unknown parameters, repeated values, arrays and objects are rejected. No pagination, arbitrary database expressions, actor IDs or free-text search are accepted.
+
+Example: `/api/v1/admin/system-logs/statistics?method=POST&slowThresholdMs=1000`.
+
+### Response and metric definitions
+
+```json
+{
+  "success": true,
+  "data": {
+    "from": "2026-11-24T10:00:00.000Z",
+    "to": "2026-11-25T10:00:00.000Z",
+    "slowThresholdMs": 1000,
+    "totalRequests": 6,
+    "successfulRequests": 2,
+    "failedRequests": 4,
+    "completedRequests": 5,
+    "abortedRequests": 1,
+    "deniedRequests": 1,
+    "slowRequests": 3,
+    "clientErrorRequests": 2,
+    "serverErrorRequests": 1,
+    "averageDurationMs": 808.33,
+    "maxDurationMs": 2000,
+    "p50DurationMs": 200,
+    "p95DurationMs": 2000,
+    "p99DurationMs": 2000
+  }
+}
+```
+
+| Metric | Definition within the selected records |
+| --- | --- |
+| `totalRequests` | All matching unexpired persisted terminal HTTP events |
+| `successfulRequests` | Completed requests with `outcome=success`; includes redirects under the existing logger's classification |
+| `failedRequests` | All other requests, including denied and aborted requests; total equals successful plus failed |
+| `completedRequests` | `http.completed=true` |
+| `abortedRequests` | `http.completed=false`, regardless of the recorded HTTP status |
+| `deniedRequests` | `outcome=denied` (normally completed 401/403/429 responses) |
+| `slowRequests` | `http.durationMs >= slowThresholdMs`, including aborted requests |
+| `clientErrorRequests` | Completed responses with status 400–499 |
+| `serverErrorRequests` | Completed responses with status 500–599 |
+| `averageDurationMs` | Average duration of all selected records, rounded to two decimal places |
+| `maxDurationMs` | Maximum duration of all selected records |
+| `p50DurationMs` | Approximate 50th percentile (median) duration, rounded to two decimal places |
+| `p95DurationMs` | Approximate 95th percentile duration, rounded to two decimal places |
+| `p99DurationMs` | Approximate 99th percentile duration, rounded to two decimal places |
+
+Percentiles use MongoDB's [`$percentile` accumulator](https://www.mongodb.com/docs/manual/reference/operator/aggregation/percentile/) with `p: [0.5, 0.95, 0.99]` and `method: 'approximate'` (t-digest). This requires **MongoDB 7.0 or newer**; the local integration server was verified as **8.0.4**. The deployed server version has not been independently verified: check it before deployment. Older servers return the existing sanitized 503 rather than silently changing calculation methods.
+
+All three values are calculated in the same `$group` as average and maximum, over the identical filtered population, including aborted requests. No durations are collected into application memory or unbounded MongoDB arrays. Approximation can vary slightly across executions or server versions; it is not an exact nearest-rank or interpolated percentile contract. Example percentile values are illustrative. Tests use exact expectations for constant datasets and an independent nearest-rank reference with a 1% rank tolerance for a 10,000-record uniform dataset; this test tolerance is not a universal accuracy guarantee. Empty datasets return zero for all five duration metrics. Existing query deadlines, filters, retention checks, authorization and indexes are unchanged.
+
+These categories overlap: slow requests can also be successful, failed, or aborted; denied requests are included in failed requests and usually client errors. An aborted request with recorded status 200 is never counted as successful. Empty results return zero for all metrics, including durations.
+
+### Storage, errors and verification
+
+The repository performs one MongoDB aggregation with a leading date/expiry/filter match and a single group, with a two-second execution limit and disk spilling disabled. It never fetches all logs into application memory or returns raw log records. Expired records are excluded immediately even before TTL deletion. Records ingested after the query's server timestamp are excluded.
+
+Counts describe retained, asynchronously persisted events, not guaranteed lifetime traffic totals. Writer drops, ingestion delay, retention, and concurrent ingestion can affect results. Viewer/statistics requests themselves generate ordinary terminal request logs and may appear in later queries. Full mounted API route identity is not available in the current logger.
+
+Errors: 400 invalid filters/date range; 401 invalid or missing credentials; 403 insufficient role; 429 shared rate budget exceeded; 503 disabled/unavailable storage, aggregation timeout, or rate-store failure. Failures never become successful zero counts. Error responses omit stack traces and database messages in every environment.
+
+Run `npm run test:system-logs`. Set `MONGO_TEST_URI` to a disposable test server to exercise real aggregation across successful, redirected, denied, failed, aborted, slow, expired and out-of-range records. Unit/HTTP tests cover validation, authorization, static route precedence, empty results, cache prevention, rate limits and storage failures. Large retained windows require staging load validation; aggregation must inspect matching records and is not constant-time despite the chronological index. No additional index is introduced solely for this endpoint.
+
+See [System Logs configuration and operations](SYSTEM_LOGS.md) for storage enablement, retention, index provisioning and Redis setup. Structured terminal output can independently be muted with `LOG_STDOUT_ENABLED=false`.
+
+## Remaining audit implementation
 
 1. Complete mounted route/job/script inventory and per-action schemas; instrument security decisions, semantic outcomes and authenticated reads.
 2. Add audit and outbox collections, indexes, repositories, transactional writers and MongoDB polling with leases, retry, deduplication and recovery. Prove rollback behavior with a disposable replica set before enforcement.

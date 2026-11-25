@@ -1,4 +1,7 @@
 import { adminRouter } from './Modules/admin/admin.routes';
+import { createSystemLogRouter, systemLogErrors } from './Modules/system-log/system-log.routes';
+import { startSystemLogs } from './Utils/logging/system-log.transport';
+import { systemLogRateStores } from './Utils/logging/system-log.rate-store';
 import { requestLogging } from './Middlewares/request-logging.middlewares';
 import { logger } from './Utils/logging/logger';
 import { languageMiddleware } from './Middlewares/language.middlewares';
@@ -61,6 +64,8 @@ config({
 
 export const bootstrap = async (): Promise<Server> => {
   const app: Express = express();
+  startSystemLogs();
+  const logRateStores = systemLogRateStores();
 
   const port = Number(process.env.PORT) || 4000;
 
@@ -69,6 +74,7 @@ export const bootstrap = async (): Promise<Server> => {
   // ==========================================
 
   app.use(requestLogging);
+  app.use('/api/v1/admin/system-logs', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use(cors(corsOptions()));
   app.use(helmet());
   app.use(cookieParser());
@@ -83,6 +89,7 @@ export const bootstrap = async (): Promise<Server> => {
   storeMoney();
   lowStockThreshold();
   await connectDB();
+
   // Cart creation safety requires the unique index before accepting traffic.
   await CartModel.createIndexes();
   await WishlistModel.createIndexes();
@@ -112,6 +119,9 @@ export const bootstrap = async (): Promise<Server> => {
   app.use('/api/v1/dashboard', ordersLimiter, dashboardRouter);
 
   // Authentication: credentials and verification codes.
+  app.use('/api/v1/admin/system-logs', createSystemLogRouter(logRateStores));
+  // Also sanitize errors raised by global middleware before the viewer router.
+  app.use('/api/v1/admin/system-logs', systemLogErrors);
   app.use('/api/v1/admin', authLimiter, express.json({ limit: '50kb' }), adminRouter);
 
   app.use('/api/v1/auth', authLimiter, express.json({ limit: '10kb' }), authRouter);

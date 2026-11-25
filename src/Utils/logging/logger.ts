@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { logContext, type LogContext } from './context';
+import { enqueueSystemLog } from './system-log.transport';
 
 type Level = 'info' | 'warn' | 'error';
 export interface LogInput {
@@ -21,12 +22,12 @@ const limit = (): number => {
 };
 
 /** Bounded fail-open sink. Backpressure drops diagnostics instead of queuing without limit. */
-export const createLogger = (sink: { write(line: string): boolean; writableLength?: number }): Logger & { dropped: number } => ({
+export const createLogger = (sink: { write(line: string): boolean; writableLength?: number }, persist?: (event: unknown) => void,
+  outputEnabled: () => boolean = () => true): Logger & { dropped: number } => ({
   dropped: 0,
   write(input, context = logContext.getStore()) {
     try {
       if (!actions.has(input.action)) { this.dropped++; return; }
-      if ((sink.writableLength ?? 0) >= 65536) { this.dropped++; return; }
       const actor = context?.actor;
       const verified = actor && 'id' in actor && /^[a-f\d]{24}$/i.test(actor.id);
       const event = {
@@ -50,6 +51,11 @@ export const createLogger = (sink: { write(line: string): boolean; writableLengt
       };
       const line = JSON.stringify(event) + '\n';
       if (Buffer.byteLength(line) > limit()) { this.dropped++; return; }
+      if (input.kind === 'request' && input.action === 'http.request') {
+        try { persist?.(event); } catch { /* Persistence must not affect stdout or HTTP. */ }
+      }
+      if (!outputEnabled()) return;
+      if ((sink.writableLength ?? 0) >= 65536) { this.dropped++; return; }
       sink.write(line);
     } catch { this.dropped++; }
   },
@@ -57,4 +63,5 @@ export const createLogger = (sink: { write(line: string): boolean; writableLengt
 
 // Handle asynchronous pipe failures as well as synchronous write exceptions.
 process.stdout.on('error', () => { logger.dropped++; });
-export const logger = createLogger(process.stdout);
+// Read at write time because dotenv loads after this module is imported.
+export const logger = createLogger(process.stdout, enqueueSystemLog, () => process.env.LOG_STDOUT_ENABLED !== 'false');
