@@ -26,8 +26,12 @@ import { RoleEnum } from '../../DB/models/user/user.interface';
 
 const router = Router();
 const optionalCustomer = (req: any, res: any, next: any) => {
-  if (!req.headers.authorization) return next();
+  if (!req.headers.authorization || req.headers.authorization.startsWith('admin ')) return next();
   return authentication(TokenTypeEnum.ACCESS, [RoleEnum.USER])(req, res, next);
+};
+const optionalAdmin = (req: any, res: any, next: any) => {
+  if (!req.headers.authorization?.startsWith('admin ')) return next();
+  return adminAuthentication()(req, res, next);
 };
 
 // Customer review paths precede the product-ID routes and admin authentication.
@@ -61,6 +65,7 @@ router.get(
 // GET /api/v1/products/:productId
 router.get(
   '/:productId',
+  optionalAdmin,
   optionalCustomer,
   validations({ params: productIdSchema }),
   productController.getProductById,

@@ -16,6 +16,8 @@ The backend stores sanitized terminal HTTP request events when explicitly enable
 
 Use deployment environment variables; do not commit credentials. The application still loads its existing development dotenv file, without overriding already supplied environment variables.
 
+The independent log connection starts in the background with 10-second server-selection and connection timeouts and a 5-second pool checkout timeout, allowing cold Atlas discovery, TLS and authentication to finish. Failed initial connections retry after 5 seconds. Readers return 503 until connected; query execution and socket timeouts remain 2 seconds.
+
 Before enabling ingestion, use provisioning credentials to run `npm run system-logs:indexes`. This creates the collection's chronological, request-ID, and expiry indexes without dropping indexes. Runtime credentials need find/update/insert access to `system_logs`; they do not need index-administration privileges. Configure network/TLS restrictions for the deployment. Multiple environments should use separate databases and rate-limit Redis instances/databases.
 
 The reader is mounted before the general admin router so it does not consume the existing authentication endpoint budget. Limits are 60 requests/minute per IP and 30/minute per verified administrator. Redis failures fail closed with a sanitized 503. Single-process development can use memory counters. Express retains its default untrusted-proxy behavior; behind a proxy, configure a precisely trusted proxy topology before deployment, not an unrestricted trust setting. Otherwise users share the proxy's IP budget.

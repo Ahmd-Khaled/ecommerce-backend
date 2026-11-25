@@ -20,8 +20,10 @@ export const startSystemLogs = () => {
   stopping = false;
   const connect = () => {
     if (stopping) return;
-    const candidate = createConnection(config.uri, { maxPoolSize: 3, minPoolSize: 0, serverSelectionTimeoutMS: 1000,
-      connectTimeoutMS: 1000, socketTimeoutMS: 2000, waitQueueTimeoutMS: 1000, autoIndex: false, bufferCommands: false });
+    // Atlas discovery, TLS and authentication can exceed one second on a cold pool.
+    // Connect in the background with a bounded budget; query execution stays capped separately.
+    const candidate = createConnection(config.uri, { maxPoolSize: 3, minPoolSize: 0, serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000, socketTimeoutMS: 2000, waitQueueTimeoutMS: 5000, autoIndex: false, bufferCommands: false });
     connection = candidate;
     candidate.on('error', () => {}); // Independent health metrics; never recursively log failures.
     model = systemLogModel(candidate);
